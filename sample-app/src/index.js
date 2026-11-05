@@ -11,7 +11,7 @@ import { add, multiply } from './math.js';
 const args = process.argv.slice(2).map(Number);
 const [a, b] = args.every(Number.isFinite) && args.length === 2 ? args : [2, 3];
 
-console.log('gha-sample-app');
+console.log('gha-sample-app test');
 console.log(`node          ${process.version}`);
 console.log(`add(${a}, ${b})       = ${add(a, b)}`);
 console.log(`multiply(${a}, ${b})  = ${multiply(a, b)}`);
