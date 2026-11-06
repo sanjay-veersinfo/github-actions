@@ -15,7 +15,7 @@ name: 06 - Scheduled Run
 on:
   schedule:
     # - cron: '0 2 * * *'     
-    - cron: '33 8 * * *' 
+    - cron: '1 * * * *' 
 
 jobs:
   scheduled-task:
