@@ -1,0 +1,46 @@
+# ==============================================================================
+# GitHub Actions Workflow: Push Event with Branches and Paths Filters
+# File Location: .github/workflows/push-branches-paths.yml
+# ==============================================================================
+
+# 'name': Display title of the workflow shown in the GitHub Actions tab.
+name: Push Event - Branches and Paths
+
+# 'on': Specifies the trigger events and conditional filters for the workflow.
+on:
+  # 'push': Triggers automatically when code is pushed to the repository.
+  push:
+    # 'branches': Filter that restricts execution to pushes on specific branches.
+    branches:
+      # Only triggers when code is pushed to the 'development' branch.
+      - development
+
+    # 'paths': Filter that restricts execution based on modified file locations.
+    paths:
+      # Triggers only when at least one modified file is within the 'src/' directory tree.
+      # The '**' glob pattern recursively matches all subdirectories and files.
+      - 'src/**'
+
+# 'jobs': Groups together all automated tasks defined in this workflow.
+jobs:
+  # 'push-branches-paths': Unique identifier (job ID) assigned to this job.
+  push-branches-paths:
+    # 'name': Human-readable job label displayed in the GitHub UI.
+    name: Execute Branch and Path Filtered Steps
+
+    # 'runs-on': Specifies the hosted virtual machine environment.
+    # 'ubuntu-latest' provides a clean, isolated Ubuntu Linux runner.
+    runs-on: ubuntu-latest
+
+    # 'steps': Sequential list of commands and actions to execute.
+    steps:
+      # Step 1: Display a welcome message confirming filter conditions were met
+      # 'name': Step title displayed in execution logs.
+      # 'run': Executes shell command (bash on Ubuntu).
+      - name: Print Welcome Message
+        run: echo "Hello World! Branch and Path filters matched."
+
+      # Step 2: Display successful execution message
+      - name: Workflow Completed
+        run: echo "Push workflow executed successfully!"
+
