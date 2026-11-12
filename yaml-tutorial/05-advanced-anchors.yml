@@ -1,0 +1,24 @@
+# ==============================================================================
+# Advanced YAML: Anchors (&), Aliases (*), and Merge Keys (<<)
+# Used extensively in Docker Compose, CI/CD, and Kubernetes configurations to stay DRY
+# ==============================================================================
+
+# Define a base template with an anchor named &common-env
+common_environment: &common-env
+  ENVIRONMENT: production
+  LOG_LEVEL: info
+  REGION: us-east-1
+  MAX_CONNECTIONS: 100
+
+services:
+  payment_service:
+    <<: *common-env              # Merge all key-value pairs from &common-env
+    SERVICE_NAME: payment-api
+    PORT: 9001
+
+  inventory_service:
+    <<: *common-env              # Reusing the exact same base keys
+    SERVICE_NAME: inventory-api
+    PORT: 9002
+    LOG_LEVEL: debug             # Overrides default LOG_LEVEL: info
+

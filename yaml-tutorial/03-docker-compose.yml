@@ -1,0 +1,59 @@
+# ==============================================================================
+# Docker Compose Multi-Container Orchestration
+# Demonstrates services, container configurations, networks, and persistent volumes
+# ==============================================================================
+
+services:
+  # Spring Boot Backend Microservice
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: order-service-app
+    restart: always
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      DB_HOST: postgres-db
+      DB_PORT: 5432
+      DB_NAME: orders_db
+      DB_USERNAME: postgres
+      DB_PASSWORD: supersecretpassword
+    depends_on:
+      postgres-db:
+        condition: service_healthy
+    networks:
+      - app-network
+
+  # PostgreSQL Database Service
+  postgres-db:
+    image: postgres:15-alpine
+    container_name: postgres-db
+    restart: always
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: orders_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: supersecretpassword
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d orders_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - app-network
+
+# Persistent Storage Volumes
+volumes:
+  postgres-data:
+    driver: local
+
+# Isolated Bridge Network
+networks:
+  app-network:
+    driver: bridge
+

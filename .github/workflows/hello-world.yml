@@ -1,0 +1,54 @@
+# ==============================================================================
+# GitHub Actions Workflow: Hello World
+# File Location: .github/workflows/hello-world.yml
+# ==============================================================================
+
+# 'name': The display title of the workflow shown in the GitHub Actions web interface.
+name: Hello World Workflow
+
+# 'on': Specifies the event(s) that trigger the workflow execution.
+on:
+  # 'workflow_dispatch': Enables manual triggering of the workflow from the GitHub UI,
+  # the GitHub CLI ('gh workflow run'), or the GitHub REST API.
+  workflow_dispatch:
+
+# 'jobs': Groups together all the automated jobs that run as part of this workflow.
+jobs:
+  # 'hello-world': Unique identifier (job ID) for this job within the workflow.
+  hello-world:
+    # 'name': Human-readable label for this specific job displayed in the GitHub UI.
+    name: Run Hello World Steps
+
+    # 'runs-on': Defines the operating system and runner environment hosted by GitHub.
+    # 'ubuntu-latest' provisions a clean, ephemeral Ubuntu Linux virtual machine.
+    runs-on: ubuntu-latest
+
+    # 'steps': A linear, ordered list of tasks executed sequentially inside the runner.
+    steps:
+      # Step 1: Display a welcome message
+      # 'name': Friendly step title displayed in the live execution logs.
+      # 'run': Executes commands in the runner's default shell (bash on Ubuntu).
+      - name: Print Welcome Message
+        run: echo "Hello World! Welcome to GitHub Actions."
+
+      # Step 2: Display the current date and time
+      # Executes the Linux 'date' utility and prints it with a clear label.
+      - name: Print Current Date and Time
+        run: echo "Current Date and Time: $(date)"
+
+      # Step 3: Display repository name
+      # '${{ github.repository }}': A GitHub context variable that resolves to the
+      # full repository path formatted as 'owner/repository' (e.g. 'sanjay/github-actions').
+      - name: Print Repository Name
+        run: echo "Repository: ${{ github.repository }}"
+
+      # Step 4: Display branch name
+      # '${{ github.ref_name }}': A GitHub context variable that resolves to the short
+      # branch or tag name where this workflow was triggered (e.g. 'main' or 'development').
+      - name: Print Branch Name
+        run: echo "Branch: ${{ github.ref_name }}"
+
+      # Step 5: Display successful completion message
+      - name: Workflow Completed
+        run: echo "Hello World workflow executed successfully!"
+
