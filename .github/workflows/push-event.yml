@@ -1,0 +1,36 @@
+# ==============================================================================
+# GitHub Actions Workflow: Push Event
+# File Location: .github/workflows/push-event.yml
+# ==============================================================================
+
+# 'name': The human-readable title of the workflow displayed in the GitHub Actions tab.
+name: Push Event Workflow
+
+# 'on': Specifies the event(s) that automatically trigger the workflow execution.
+on:
+  # 'push': Triggers the workflow automatically whenever commits are pushed to the repository.
+  push:
+
+# 'jobs': Groups together all the automated tasks that will run for this workflow.
+jobs:
+  # 'push-event': Unique identifier (job ID) assigned to this job.
+  push-event:
+    # 'name': Optional human-friendly label for this job shown in the GitHub Actions UI.
+    name: Execute Push Event Steps
+
+    # 'runs-on': Specifies the virtual machine runner environment hosted by GitHub.
+    # 'ubuntu-latest' spins up a clean, isolated Ubuntu Linux virtual machine.
+    runs-on: ubuntu-latest
+
+    # 'steps': A linear sequence of individual tasks executed in order inside the runner.
+    steps:
+      # Step 1: Display a welcome message
+      # 'name': Friendly title displayed for this step in the live execution logs.
+      # 'run': Executes the command in the runner's default shell (bash on Ubuntu).
+      - name: Print Welcome Message
+        run: echo "Hello World! Push event triggered successfully."
+
+      # Step 2: Display a successful execution message
+      - name: Workflow Completed
+        run: echo "Push Event Workflow executed successfully!"
+

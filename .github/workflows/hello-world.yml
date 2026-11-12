@@ -31,7 +31,17 @@ jobs:
       - name: Print Welcome Message
         run: echo "Hello World! Welcome to GitHub Actions."
 
-      # Step 2: Display successful completion message
+      # Step 2: Print Multiple Strings
+      # Uses the YAML literal block scalar '|' to execute multiple commands
+      # and print multiple strings across distinct lines in a single step.
+      - name: Print Multiple Strings
+        run: |
+          echo "=== String 1: Senior DevOps Engineer Pipeline Demonstration ==="
+          echo "=== String 2: Tooling Stack - Spring Boot | Go | React | PostgreSQL ==="
+          echo "=== String 3: Infrastructure - Docker Compose & Ubuntu Cloud Server ==="
+          echo "=== String 4: GitHub Actions event triggered via workflow_dispatch ==="
+          echo "=== String 5: YAML Multi-line block scalar '|' executed successfully ==="
+
+      # Step 3: Display successful completion message
       - name: Workflow Completed
         run: echo "Hello World workflow executed successfully!"
-
