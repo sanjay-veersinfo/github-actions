@@ -31,24 +31,7 @@ jobs:
       - name: Print Welcome Message
         run: echo "Hello World! Welcome to GitHub Actions."
 
-      # Step 2: Display the current date and time
-      # Executes the Linux 'date' utility and prints it with a clear label.
-      - name: Print Current Date and Time
-        run: echo "Current Date and Time: $(date)"
-
-      # Step 3: Display repository name
-      # '${{ github.repository }}': A GitHub context variable that resolves to the
-      # full repository path formatted as 'owner/repository' (e.g. 'sanjay/github-actions').
-      - name: Print Repository Name
-        run: echo "Repository: ${{ github.repository }}"
-
-      # Step 4: Display branch name
-      # '${{ github.ref_name }}': A GitHub context variable that resolves to the short
-      # branch or tag name where this workflow was triggered (e.g. 'main' or 'development').
-      - name: Print Branch Name
-        run: echo "Branch: ${{ github.ref_name }}"
-
-      # Step 5: Display successful completion message
+      # Step 2: Display successful completion message
       - name: Workflow Completed
         run: echo "Hello World workflow executed successfully!"
 
