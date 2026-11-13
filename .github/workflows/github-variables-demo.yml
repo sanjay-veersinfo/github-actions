@@ -1,0 +1,191 @@
+# ==============================================================================
+# GitHub Actions Workflow: GitHub Actions Configuration Variables (vars Context)
+# File Location: .github/workflows/github-variables-demo.yml
+# ==============================================================================
+
+# 'name': Display title of the workflow shown in the GitHub Actions tab.
+name: GitHub Actions Variables Demo
+
+# 'on': Specifies the event that triggers this workflow.
+on:
+  # 'workflow_dispatch': Enables manual triggering from the GitHub Actions tab via 'Run workflow'.
+  workflow_dispatch:
+
+# 'jobs': Groups together the tasks executed when the workflow runs.
+jobs:
+
+  # ----------------------------------------------------------------------------
+  # JOB 1: REPOSITORY-LEVEL VARIABLES DEMONSTRATION
+  # Demonstrates accessing non-sensitive configuration parameters stored in
+  # GitHub Repository Settings via the 'vars' context.
+  # ----------------------------------------------------------------------------
+  variables-demo:
+    name: Repository-Level Variables & Tool Configuration
+    runs-on: ubuntu-latest
+
+    steps:
+      # ========================================================================
+      # STEP 1: DISPLAY REPOSITORY-LEVEL VARIABLES
+      # '${{ vars.VARIABLE_NAME }}': Retrieves non-sensitive configuration values
+      # configured under Repository Settings -> Secrets and variables -> Actions -> Variables tab.
+      # If a variable is not set in GitHub, it evaluates to an empty string.
+      # ========================================================================
+      - name: Display Repository Variables
+        run: |
+          echo "=== 1. Reading Configuration from GitHub Variables (vars) ==="
+          echo "Application Name:    ${{ vars.APP_NAME }}"
+          echo "Application Version: ${{ vars.APP_VERSION }}"
+          echo "Deployment Env:      ${{ vars.DEPLOY_ENV }}"
+          echo "API Base URL:        ${{ vars.API_BASE_URL }}"
+          echo "Target Node Version: ${{ vars.NODE_VERSION }}"
+          echo ""
+          if [ -z "${{ vars.APP_NAME }}" ]; then
+            echo "NOTICE: 'APP_NAME' is not configured yet in GitHub Settings."
+            echo "Tip: Add variables in Settings -> Secrets and variables -> Actions -> Variables tab."
+          else
+            echo "SUCCESS: Successfully read repository-level configuration variables!"
+          fi
+
+      # ========================================================================
+      # STEP 2: CONFIGURE GITHUB ACTIONS TOOLS USING 'vars'
+      # Demonstrates how the 'vars' context can supply dynamic inputs to an action via 'with'.
+      # Here, setup-node reads the Node.js version from ${{ vars.NODE_VERSION }}.
+      # A fallback ('22') is provided so the step succeeds even if vars.NODE_VERSION is unset.
+      # ========================================================================
+      - name: Setup Node.js Using vars Input
+        uses: actions/setup-node@v4
+        with:
+          # Reads configured Node.js version from variables, defaulting to 22 if not configured
+          node-version: ${{ vars.NODE_VERSION || '22' }}
+
+      # Step 3: Verify the configured Node.js runtime
+      - name: Verify Configured Node.js Runtime
+        run: |
+          echo "=== 2. Node.js Runtime Verification ==="
+          echo "Active Node.js version on runner: $(node --version)"
+          echo "Active npm version on runner:     $(npm --version)"
+
+      # ========================================================================
+      # STEP 4: COMBINE 'vars', 'env', AND 'secrets' TOGETHER
+      # Demonstrates the harmonious combination of:
+      # - 'vars': Non-sensitive configuration from GitHub Settings.
+      # - 'env': Mapping variables into the runner's shell environment.
+      # - 'secrets': Encrypted credentials safely mapped without logging values.
+      # ========================================================================
+      - name: Application Configuration (vars + env + secrets)
+        env:
+          # Map non-sensitive configuration variable from vars
+          APP_NAME: ${{ vars.APP_NAME || 'SGC Application (Fallback)' }}
+          # Map sensitive credential from secrets
+          API_KEY: ${{ secrets.DEMO_API_KEY }}
+        run: |
+          echo "=== 3. Combining vars, env, and secrets ==="
+          echo "Application Name (from env mapped from vars): $APP_NAME"
+          if [ -n "$API_KEY" ]; then
+            echo "API Key Status: Configured (encrypted secret bound securely to env)."
+          else
+            echo "API Key Status: Missing (optional DEMO_API_KEY secret not found)."
+          fi
+
+  # ----------------------------------------------------------------------------
+  # JOB 2: ENVIRONMENT-LEVEL VARIABLES DEMONSTRATION
+  # 'environment: development': Links this job to the 'development' environment.
+  # Variables defined inside this environment will override repository-level variables
+  # with the same name, allowing different endpoints for dev, staging, and prod!
+  # ----------------------------------------------------------------------------
+  environment-variables-demo:
+    name: Environment-Level Variables Demo
+    runs-on: ubuntu-latest
+
+    # Select the GitHub environment configured in repository settings
+    environment: development
+
+    steps:
+      # Step A: Display environment-scoped variables
+      - name: Display Development Environment Variables
+        run: |
+          echo "=== 4. Environment-Scoped Variables (development) ==="
+          echo "Active Environment Target: ${{ vars.DEPLOY_ENV }}"
+          echo "Environment API Endpoint:  ${{ vars.API_BASE_URL }}"
+          echo ""
+          if [ -n "${{ vars.API_BASE_URL }}" ]; then
+            echo "SUCCESS: Loaded environment-scoped configuration for 'development'."
+          else
+            echo "NOTICE: Environment variables for 'development' not yet configured in GitHub."
+            echo "Tip: Configure environments under Repository Settings -> Environments."
+          fi
+
+      # Step B: Summary completion message
+      - name: Variables Demo Completed
+        run: |
+          echo "GitHub Actions Variables demonstration completed successfully!"
+
+# GitHub Actions Variables are centralized, non-sensitive configuration parameters stored in GitHub's web interface rather than hardcoded into your YAML workflow files.
+
+# Why Use vars Instead of Hardcoding in YAML?
+# Centralized Configuration: If your backend API domain changes from api.old.com to api.new.com, you update it once in the GitHub UI, and all 10 workflow files instantly use the new URL without requiring git commits or pull requests.
+# Reusability Across Workflows: Multiple workflow files (ci.yml, deploy.yml, nightly.yml) can share the exact same configuration keys.
+# Multi-Environment Promotion: The exact same YAML code can deploy to development, staging, and production by reading environment-scoped variables.
+# 3. Comparison: vars vs. env vs. secrets
+# Dimension	vars	env	secrets
+# Purpose	Non-sensitive configuration	Ephemeral runner environment	Sensitive credentials
+# Examples	API_URL, NODE_VERSION, PORT	TEMP_DIR, loop counters	Passwords, API tokens, SSH keys
+# Where Configured	GitHub Web Settings UI	In YAML workflow files	GitHub Web Settings UI
+# Visible in Plaintext?	Yes (in UI and execution logs)	Yes (in YAML code & logs)	No (masked as *** in logs)
+# Access Syntax	${{ vars.KEY }}	${{ env.KEY }} or $KEY in shell	${{ secrets.KEY }}
+# Editable Without Commits?	Yes (via GitHub Web UI)	No (requires Git commit)	Yes (via GitHub Web UI)
+# 4. How and Where to Configure Variables in GitHub
+
+# To configure the sample variables used in our demonstration:
+
+# Open your repository on GitHub.
+# Click Settings in the top navigation bar.
+# In the left sidebar, expand Secrets and variables 
+# →
+# → click Actions.
+# Click on the Variables tab (next to the Secrets tab).
+# Click the green New repository variable button.
+# Enter the Name and Value, then click Add variable:
+# Variable Name	Example Value	Description
+# APP_NAME	SGC Application	Display name of the application
+# APP_VERSION	1.0.0	Semantic version string
+# DEPLOY_ENV	development	Active target environment
+# API_BASE_URL	https://api.example.com	Backend REST API endpoint
+# NODE_VERSION	22	Target Node.js major runtime version
+# 5. Multi-Environment Variable Architecture
+
+# GitHub allows configuring the exact same variable names with different values depending on the deployment target:
+
+# text
+# ┌────────────────────────────────────────────────────────┐
+# │                   GitHub Repository                    │
+# ├────────────────────────────────────────────────────────┤
+# │ Repository Variables (Fallback):                       │
+# │   vars.API_BASE_URL = "https://api.default.com"        │
+# ├────────────────────────────────────────────────────────┤
+# │ Environment: development                               │
+# │   vars.API_BASE_URL = "https://dev-api.example.com"    │
+# ├────────────────────────────────────────────────────────┤
+# │ Environment: staging                                   │
+# │   vars.API_BASE_URL = "https://staging-api.example.com"│
+# ├────────────────────────────────────────────────────────┤
+# │ Environment: production                                │
+# │   vars.API_BASE_URL = "https://api.example.com"        │
+# └────────────────────────────────────────────────────────┘
+
+# When a job declares environment: development, GitHub automatically resolves ${{ vars.API_BASE_URL }} to the development endpoint.
+
+# 6. Practical Demonstration: Dynamic Tool Configuration with vars
+
+# In Step 2 of our workflow:
+
+# yaml
+# - name: Setup Node.js Using vars Input
+#   uses: actions/setup-node@v4
+#   with:
+#     node-version: ${{ vars.NODE_VERSION || '22' }}
+# Instead of hardcoding node-version: 22 in every single workflow, it reads directly from ${{ vars.NODE_VERSION }}.
+# When your team upgrades from Node 22 to Node 24 next year, you simply change NODE_VERSION to 24 in GitHub Repository Settings, and every workflow across the repository automatically adopts the new version!
+# The fallback || '22' ensures that if the variable is not yet set in GitHub Settings, the step gracefully defaults to 22 rather than failing.
+
+
