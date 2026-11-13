@@ -1,0 +1,88 @@
+# ==============================================================================
+# GitHub Actions Workflow: Checkout and Fetch Depth Demonstration
+# File Location: .github/workflows/checkout-fetch-depth.yml
+# ==============================================================================
+
+# 'name': The display title of the workflow shown in the GitHub Actions tab.
+name: Checkout and Fetch Depth Demo
+
+# 'on': Specifies the event that triggers this workflow.
+on:
+  # 'workflow_dispatch': Enables manual triggering from the GitHub Actions tab via 'Run workflow'.
+  workflow_dispatch:
+
+# 'jobs': Groups together the tasks executed when the workflow runs.
+jobs:
+  # 'checkout-demo': Unique job identifier (job ID) within this workflow.
+  checkout-demo:
+    # 'name': Human-readable label displayed in the GitHub Actions execution UI.
+    name: Demonstrate Before, Checkout, and After Steps
+
+    # 'runs-on': Specifies the virtual machine runner environment hosted by GitHub.
+    # 'ubuntu-latest' allocates a fresh, ephemeral Ubuntu Linux virtual machine.
+    runs-on: ubuntu-latest
+
+    # 'steps': A linear sequence of individual tasks executed in strict sequential order.
+    steps:
+      # ========================================================================
+      # STEP 1: BEFORE CHECKOUT
+      # At this point, the runner virtual machine has just booted up.
+      # The repository has NOT been checked out yet.
+      # The current working directory exists ($GITHUB_WORKSPACE), but it is completely empty.
+      # Trying to run 'node src/index.js' or 'cat README.md' here would fail with "File not found"!
+      # ========================================================================
+      - name: Executing Before Checkout
+        run: |
+          echo "=== 1. Executing Before Checkout ==="
+          echo "The repository has NOT been downloaded yet."
+          echo ""
+          echo "Current working directory:"
+          pwd
+          echo ""
+          echo "Listing files in workspace (should be empty):"
+          ls -la
+
+      # ========================================================================
+      # STEP 2: CHECKOUT REPOSITORY
+      # 'uses': Tells GitHub to download and execute the reusable action 'actions/checkout@v4'.
+      # 'with': Keyword used to pass input configuration parameters into the action.
+      #
+      # 'fetch-depth': Controls the number of commits to fetch from Git history.
+      #   * 'fetch-depth: 1' (Default behavior): Shallow clone. Only downloads the single
+      #     latest commit. Fast and lightweight, but 'git log' only sees 1 commit.
+      #   * 'fetch-depth: 0' (Full history): Fetches all commits, tags, and history across all branches.
+      #     Essential for: changelog generators, release versioning tools (e.g., semantic-release),
+      #     SonarQube code quality analysis, and inspecting historical 'git log'.
+      # ========================================================================
+      - name: Checkout Repository with Full Git History
+        uses: actions/checkout@v4
+        with:
+          # Fetch the complete Git history across all commits
+          fetch-depth: 0
+
+      # ========================================================================
+      # STEP 3: AFTER CHECKOUT
+      # Because actions/checkout completed in Step 2, the source code and the '.git'
+      # folder are now fully available inside the working directory.
+      # All subsequent steps can now compile code, run tests, and execute Git CLI commands!
+      # ========================================================================
+      - name: Executing After Checkout
+        run: |
+          echo "=== 2. Executing After Checkout ==="
+          echo "The repository and full Git history are now downloaded and accessible."
+          echo ""
+          echo "Current working directory:"
+          pwd
+          echo ""
+          echo "Listing files in workspace (source files and .git are now visible):"
+          ls -la
+          echo ""
+          echo "Checking Git repository status:"
+          git status
+          echo ""
+          echo "Checking active branch name:"
+          git branch --show-current
+          echo ""
+          echo "Displaying the 5 most recent Git commits (made possible by fetch-depth: 0):"
+          git log --oneline -5
+
