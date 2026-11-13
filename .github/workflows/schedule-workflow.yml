@@ -1,0 +1,63 @@
+# ==============================================================================
+# GitHub Actions Workflow: Scheduled Hello World Workflow (Cron Trigger)
+# File Location: .github/workflows/schedule-workflow.yml
+# ==============================================================================
+
+# 'name': The display title of the workflow shown in the GitHub Actions tab.
+name: Scheduled Hello World Workflow
+
+# 'on': Specifies the event that triggers this workflow.
+on:
+  # 'schedule': Automatically triggers the workflow based on POSIX cron syntax.
+  schedule:
+    # Cron format: Minute (0-59) Hour (0-23) Day-of-Month (1-31) Month (1-12) Day-of-Week (0-6)
+    # '0 9 * * *' executes every day at 09:00 AM UTC (2:30 PM IST).
+    - cron: '0 9 * * *'
+
+  # 'workflow_dispatch': Senior DevOps Best Practice:
+  # Adding manual dispatch allows on-demand testing via the 'Run workflow' button
+  # without having to wait for the scheduled cron timer to fire.
+  workflow_dispatch:
+
+# 'jobs': Groups together all the automated tasks that will run for this workflow.
+jobs:
+  # 'hello-world': Unique job identifier (job ID) within this workflow.
+  hello-world:
+    # 'name': Human-readable label for this specific job displayed in the GitHub UI.
+    name: Execute Scheduled Hello World Steps
+
+    # 'runs-on': Specifies the virtual machine runner environment hosted by GitHub.
+    # 'ubuntu-latest' provisions a clean, ephemeral Ubuntu Linux virtual machine.
+    runs-on: ubuntu-latest
+
+    # 'steps': A linear sequence of individual tasks executed sequentially.
+    steps:
+      # Step 1: Display a welcome message confirming the scheduled execution started
+      # Using '|' literal block scalar avoids any YAML plain scalar colon (: ) conflicts.
+      - name: Print Welcome Message
+        run: |
+          echo "Hello World! Scheduled workflow started."
+
+      # Step 2: Display current date and time on the runner
+      # Executes the Linux 'date' command to output the UTC timestamp and runner time.
+      - name: Print Current Date and Time
+        run: |
+          echo "Current Runner Time: $(date)"
+
+      # Step 3: Display repository name
+      # '${{ github.repository }}': Context variable resolving to 'owner/repository'.
+      - name: Print Repository Name
+        run: |
+          echo "Repository: ${{ github.repository }}"
+
+      # Step 4: Display branch or reference name
+      # '${{ github.ref_name }}': For scheduled workflows, this resolves to the default branch (e.g. 'main').
+      - name: Print Branch Name
+        run: |
+          echo "Reference: ${{ github.ref_name }}"
+
+      # Step 5: Display successful completion message
+      - name: Workflow Completed
+        run: |
+          echo "Scheduled workflow executed successfully!"
+
