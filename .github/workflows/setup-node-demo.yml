@@ -1,0 +1,92 @@
+# ==============================================================================
+# GitHub Actions Workflow: Setup Node.js and the 'with' Keyword Demo
+# File Location: .github/workflows/setup-node-demo.yml
+# ==============================================================================
+
+# 'name': The display title of the workflow shown in the GitHub Actions tab.
+name: Setup Node.js Demo
+
+# 'on': Specifies the event that triggers this workflow.
+on:
+  # 'workflow_dispatch': Enables manual triggering from the GitHub Actions tab via 'Run workflow'.
+  workflow_dispatch:
+
+# 'jobs': Groups together the tasks executed when the workflow runs.
+jobs:
+  # 'node-demo': Unique job identifier (job ID) within this workflow.
+  node-demo:
+    # 'name': Human-readable label displayed in the GitHub Actions execution UI.
+    name: Setup Node.js Environment & Run Application
+
+    # 'runs-on': Specifies the virtual machine runner environment hosted by GitHub.
+    # 'ubuntu-latest' allocates a fresh, ephemeral Ubuntu Linux virtual machine.
+    runs-on: ubuntu-latest
+
+    # 'steps': A linear sequence of individual tasks executed in strict sequential order.
+    steps:
+      # ========================================================================
+      # STEP 1: DISPLAY RUNNER INFORMATION (BEFORE SETUP)
+      # Ubuntu virtual machines provided by GitHub may come with a default pre-installed
+      # version of Node.js. However, you should NEVER rely on runner defaults in production!
+      # Upstream image updates can change the default Node.js version without warning,
+      # breaking your builds. Step 1 shows what version is pre-installed out of the box.
+      # ========================================================================
+      - name: Before Node.js Setup
+        run: |
+          echo "=== 1. Before Node.js Setup ==="
+          echo "Checking default Node.js version on the Ubuntu runner:"
+          node --version
+          echo "Checking default npm version on the Ubuntu runner:"
+          npm --version
+          echo "Notice: This default version may differ from our project requirement (Node 22)!"
+
+      # ========================================================================
+      # STEP 2: CHECKOUT REPOSITORY
+      # 'uses': Tells GitHub Actions to download and execute a reusable community action.
+      # 'actions/checkout@v4': Clones your repository into the runner's workspace directory.
+      # Checkout is required so subsequent steps can access project source files (like src/index.js).
+      # ========================================================================
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      # ========================================================================
+      # STEP 3: SETUP NODE.JS
+      # 'uses': Executes 'actions/setup-node@v4', an official action maintained by GitHub.
+      # 'with': Passes input configuration parameters to customize the action's behavior.
+      # 'node-version': Tells setup-node exactly which major or specific version to configure.
+      #
+      # How setup-node works:
+      # 1. Checks if Node.js 22 is in the runner's local tool cache ($RUNNER_TOOL_CACHE).
+      # 2. If cached, it uses it immediately; if not, it downloads Node 22 from nodejs.org.
+      # 3. Prepends the Node.js 22 binary directory to the system PATH ($GITHUB_PATH),
+      #    ensuring all future steps execute using Node.js 22!
+      # ========================================================================
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          # Specify the target Node.js major version required for this project
+          node-version: 22
+
+      # ========================================================================
+      # STEP 4: VERIFY NODE.JS SETUP
+      # Confirms that the active Node.js and npm versions have successfully switched
+      # to version 22 as configured by setup-node in Step 3.
+      # ========================================================================
+      - name: Verify Node.js Setup
+        run: |
+          echo "=== 2. After Node.js Setup ==="
+          echo "Active Node.js version:"
+          node --version
+          echo "Active npm version:"
+          npm --version
+          echo "Node.js setup completed successfully!"
+
+      # ========================================================================
+      # STEP 5: RUN SIMPLE NODE.JS APPLICATION
+      # Executes the project's JavaScript entry point using the newly configured Node.js runtime.
+      # ========================================================================
+      - name: Run Node.js Application
+        run: |
+          echo "=== 3. Executing JavaScript Application ==="
+          node src/index.js
+
