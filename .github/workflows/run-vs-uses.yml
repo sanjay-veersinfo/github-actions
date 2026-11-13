@@ -1,0 +1,69 @@
+# ==============================================================================
+# GitHub Actions Workflow: Understanding 'run' vs 'uses'
+# File Location: .github/workflows/run-vs-uses.yml
+# ==============================================================================
+
+# 'name': The display title of the workflow shown in the GitHub Actions tab.
+name: Run vs Uses Example
+
+# 'on': Specifies the event that triggers this workflow.
+on:
+  # 'workflow_dispatch': Allows manual execution from the GitHub Actions UI.
+  workflow_dispatch:
+
+# 'jobs': Groups together the tasks executed when the workflow runs.
+jobs:
+  # 'hello-world': Unique job identifier (job ID) within this workflow.
+  hello-world:
+    # 'name': Human-friendly label for this job displayed in the GitHub UI.
+    name: Compare Run and Uses Directives
+
+    # 'runs-on': Specifies the virtual machine runner environment hosted by GitHub.
+    # 'ubuntu-latest' provisions a fresh, ephemeral Ubuntu Linux virtual machine.
+    runs-on: ubuntu-latest
+
+    # 'steps': A linear sequence of individual tasks executed inside the runner.
+    steps:
+      # STEP 1: 'run' executes a single shell command directly in the runner's terminal.
+      # Using '|' literal block scalar avoids any YAML plain scalar colon (: ) conflicts.
+      - name: Print Welcome Message
+        run: |
+          echo "Hello World! Welcome to GitHub Actions."
+
+      # STEP 2: 'run' executes multiple shell commands sequentially using YAML's '|' block scalar.
+      - name: Display System Information
+        run: |
+          echo "Operating System:"
+          uname -a
+
+          echo "Current Date:"
+          date
+
+      # STEP 3: 'uses' executes a pre-packaged, reusable GitHub Action from a repository.
+      # 'actions/checkout@v4' downloads and checks out the repository source code onto the runner.
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      # STEP 4: 'uses' combined with 'with' to pass input parameters to the action.
+      # 'actions/setup-node@v4' downloads, caches, and adds Node.js 22 to the system PATH.
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          # Input parameter passed to the setup-node action
+          node-version: '22'
+
+      # STEP 5: 'run' invokes the 'node' binary pre-configured by setup-node in Step 4.
+      - name: Display Node.js Version
+        run: |
+          node --version
+
+      # STEP 6: 'run' executes your custom application script located in the checked-out code.
+      - name: Execute JavaScript Application
+        run: |
+          node src/index.js
+
+      # STEP 7: 'run' prints a final completion status message.
+      - name: Workflow Completed
+        run: |
+          echo "Workflow executed successfully!"
+

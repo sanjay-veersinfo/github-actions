@@ -1,0 +1,76 @@
+# ==============================================================================
+# GitHub Actions Workflow: Runner Context & runs-on Demonstration
+# File Location: .github/workflows/runner-context.yml
+# ==============================================================================
+
+# 'name': The human-readable title of the workflow displayed in the GitHub Actions tab.
+name: Runner Context Example
+
+# 'on': Specifies the event that triggers this workflow.
+on:
+  # 'workflow_dispatch': Allows manual execution from the GitHub Actions UI via 'Run workflow'.
+  workflow_dispatch:
+
+# 'jobs': Groups together the tasks executed when the workflow runs.
+jobs:
+  # 'runner-info': Unique job ID within this workflow.
+  runner-info:
+    # 'name': Human-friendly job label displayed in the GitHub UI.
+    name: Inspect Runner Environment & Context
+
+    # 'runs-on': Specifies the target machine / OS environment provisioned by GitHub.
+    # 'ubuntu-latest' allocates a fresh, ephemeral Ubuntu Linux virtual machine.
+    runs-on: ubuntu-latest
+
+    # 'steps': A linear, ordered list of tasks executed sequentially inside the runner.
+    steps:
+      # Step 1: Display a welcome message
+      # Using '|' literal block scalar avoids any YAML plain scalar colon (: ) conflicts.
+      - name: Welcome Message
+        run: |
+          echo "Welcome to GitHub Actions Runner!"
+
+      # Step 2: Display the operating system using default environment variables
+      # '$RUNNER_OS' is an environment variable set by GitHub inside the runner shell (e.g. Linux, Windows, macOS).
+      - name: Display Operating System
+        run: |
+          echo "Operating System: $RUNNER_OS"
+
+      # Step 3: Display runner hardware architecture
+      # '$RUNNER_ARCH' holds the processor architecture (e.g. X64, ARM64).
+      - name: Display Runner Architecture
+        run: |
+          echo "Architecture: $RUNNER_ARCH"
+
+      # Step 4: Display runner name
+      # '$RUNNER_NAME' provides the unique name of the virtual machine instance executing the job.
+      - name: Display Runner Name
+        run: |
+          echo "Runner Name: $RUNNER_NAME"
+
+      # Step 5: Display runner temporary directory path
+      # '$RUNNER_TEMP' points to a dedicated directory for temporary scratch files, wiped after job completion.
+      - name: Display Temporary Directory
+        run: |
+          echo "Temp Directory: $RUNNER_TEMP"
+
+      # Step 6: Display runner tool cache directory
+      # '$RUNNER_TOOL_CACHE' points to pre-installed SDKs (Java, Node.js, Python, Go, Ruby) on the runner.
+      - name: Display Tool Cache
+        run: |
+          echo "Tool Cache: $RUNNER_TOOL_CACHE"
+
+      # Step 7: Display GitHub runner context
+      # '${{ runner.* }}' expressions are evaluated by the GitHub Actions engine *before* the script is handed to bash.
+      - name: Display Runner Context
+        run: |
+          echo "Runner OS: ${{ runner.os }}"
+          echo "Runner Architecture: ${{ runner.arch }}"
+          echo "Runner Name: ${{ runner.name }}"
+          echo "Runner Environment: ${{ runner.environment }}"
+
+      # Step 8: Display successful completion message
+      - name: Workflow Completed
+        run: |
+          echo "Runner context workflow completed successfully!"
+

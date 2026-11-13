@@ -1,0 +1,87 @@
+# ==============================================================================
+# GitHub Actions Workflow: Pull Request Automated Validation
+# File Location: .github/workflows/pull-request-workflow.yml
+# ==============================================================================
+
+# 'name': The human-readable title of the workflow displayed in the GitHub Actions tab.
+name: Pull Request Workflow
+
+# 'on': Specifies the event(s) that trigger this workflow.
+on:
+  # 'pull_request': Triggers automatically when activity occurs on a Pull Request.
+  pull_request:
+    # 'types': Defines which specific Pull Request lifecycle actions trigger the workflow.
+    types:
+      # Trigger when a new Pull Request is initially created / opened.
+      - opened
+      # Trigger when new commits are pushed to the source branch of an existing PR.
+      - synchronize
+      # Trigger when a previously closed Pull Request is reopened.
+      - reopened
+
+    # 'branches': Filters the TARGET (base) branch of the Pull Request.
+    branches:
+      # Only runs when the PR proposes merging changes INTO the 'development' branch.
+      - development
+
+# 'jobs': Defines the automated jobs executed when the PR event fires.
+jobs:
+  # 'pull-request-check': Unique job ID for this validation job.
+  pull-request-check:
+    # 'name': Human-friendly job label displayed in the Pull Request checks status widget.
+    name: Validate Pull Request Changes
+
+    # 'runs-on': Specifies the runner operating system hosted by GitHub.
+    # 'ubuntu-latest' allocates a fresh, ephemeral Ubuntu Linux virtual machine.
+    runs-on: ubuntu-latest
+
+    # 'steps': A linear sequence of individual tasks executed sequentially inside the runner.
+    steps:
+      # Step 1: Checkout the repository code
+      # Uses the official checkout action to download the synthetic merge branch of the PR.
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      # Step 2: Set up Node.js runtime environment
+      # Uses the official setup-node action to install Node.js 22 and configure PATH.
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          # Specify Node.js major version
+          node-version: '22'
+
+      # Step 3: Display the Pull Request number
+      # '${{ github.event.pull_request.number }}': Resolves to the integer PR number (e.g. #1, #42).
+      - name: Display Pull Request Number
+        run: |
+          echo "Pull Request Number: #${{ github.event.pull_request.number }}"
+
+      # Step 4: Display the source branch (head_ref)
+      # '${{ github.head_ref }}': The source feature branch where changes originated.
+      - name: Display Source Branch
+        run: |
+          echo "Source Branch (head_ref): ${{ github.head_ref }}"
+
+      # Step 5: Display the target branch (base_ref)
+      # '${{ github.base_ref }}': The destination branch the PR aims to merge into (e.g. 'development').
+      - name: Display Target Branch
+        run: |
+          echo "Target Branch (base_ref): ${{ github.base_ref }}"
+
+      # Step 6: Display the Pull Request title
+      # '${{ github.event.pull_request.title }}': The textual title given to the PR by the author.
+      - name: Display Pull Request Title
+        run: |
+          echo "PR Title: ${{ github.event.pull_request.title }}"
+
+      # Step 7: Execute the JavaScript application
+      # Runs the Node.js script located at src/index.js inside the runner.
+      - name: Run JavaScript Application
+        run: |
+          node src/index.js
+
+      # Step 8: Display successful completion message
+      - name: Workflow Completed
+        run: |
+          echo "Pull Request checks completed successfully!"
+

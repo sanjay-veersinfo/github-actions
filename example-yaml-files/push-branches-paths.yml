@@ -1,0 +1,202 @@
+# ==============================================================================
+# GitHub Actions Workflow: Push Event with Branches and Paths Filters
+# File Location: .github/workflows/push-branches-paths.yml
+# In GitHub Actions, the push event supports several useful configurations. Here are simple YAML examples of what you can do.
+# 1. Branch filters
+# Execute workflow only for specific branches.
+# on:
+#   push:
+#     branches:
+#       - main
+#       - development
+#       - staging
+
+
+# 2. Exclude branches
+# Execute for all branches except development.
+# on:
+#   push:
+#     branches-ignore:
+#       - development
+#       - feature/**
+
+
+# 3. Path filters
+# Execute only when files in specific directories change.
+# on:
+#   push:
+#     paths:
+#       - 'src/**'
+#       - 'backend/**'
+#       - 'frontend/**'
+
+
+# 4. Exclude specific paths
+# Execute when files change except README and documentation files.
+# on:
+#   push:
+#     paths-ignore:
+#       - 'README.md'
+#       - 'docs/**'
+#       - '*.txt'
+
+
+# 5. Branch + Path filters
+# Execute only when both branch and path conditions match.
+# on:
+#   push:
+#     branches:
+#       - development
+#     paths:
+#       - 'src/**'
+#       - 'package.json'
+
+
+# 6. Tag filters
+# Execute workflow when a version tag is pushed.
+# on:
+#   push:
+#     tags:
+#       - 'v1.*'
+#       - 'v2.*'
+
+
+# Example: v1.0.0, v2.1.0.
+# 7. Exclude tags
+# Execute for all tags except beta releases.
+# on:
+#   push:
+#     tags-ignore:
+#       - '*-beta'
+#       - '*-alpha'
+
+
+# 8. Multiple workflows for different branches
+# on:
+#   push:
+#     branches:
+#       - main
+#       - development
+#       - staging
+
+# jobs:
+#   branch-info:
+#     runs-on: ubuntu-latest
+#     steps:
+#       - name: Check Branch
+#         run: echo "Pushed branch: ${{ github.ref_name }}"
+
+
+# 9. Run commands based on branch
+# on:
+#   push:
+#     branches:
+#       - main
+#       - development
+
+# jobs:
+#   deploy:
+#     runs-on: ubuntu-latest
+#     steps:
+#       - name: Main Branch
+#         if: github.ref == 'refs/heads/main'
+#         run: echo "Production branch pushed"
+
+#       - name: Development Branch
+#         if: github.ref == 'refs/heads/development'
+#         run: echo "Development branch pushed"
+
+
+# 10. Run workflow when specific files change
+# on:
+#   push:
+#     paths:
+#       - 'src/**/*.js'
+#       - 'src/**/*.jsx'
+#       - 'src/**/*.ts'
+#       - 'src/**/*.tsx'
+
+
+# 11. Exclude a directory using negative patterns
+# on:
+#   push:
+#     paths:
+#       - 'src/**'
+#       - '!src/tests/**'
+
+
+# This runs when files under src/ change, excluding src/tests/.
+# 12. Run workflow for all branches
+# on:
+#   push:
+
+
+# This triggers on pushes to any branch or tag.
+
+# Important GitHub Actions push filters
+# Configuration	Purpose
+# branches	Include specific branches
+# branches-ignore	Exclude specific branches
+# paths	Include specific file paths
+# paths-ignore	Exclude specific file paths
+# tags	Include specific tags
+# tags-ignore	Exclude specific tags
+# if	Conditionally execute jobs or steps
+# github.ref_name	Get branch or tag name
+# github.event_name	Get event name
+
+# Important rules:
+# - Don't use branches and branches-ignore together in the same event configuration.
+# - Don't use paths and paths-ignore together.
+# - Use negative patterns (!) inside branches or paths when you need inclusion and exclusion together.
+# - Branch and path filters work together using AND logic.
+# - Path filters are not evaluated for tag pushes.
+# - GitHub applies a 300-file diff limit to push path filtering, which can affect whether a workflow is triggered.
+# Recommended next practical exercise
+# Try these three scenarios in your JavaScript project:
+# 1. Execute only when src/** changes.
+# 2. Execute only when development or staging receives a push.
+# 3. Execute when src/** changes but exclude src/tests/**.
+# ==============================================================================
+
+# 'name': Display title of the workflow shown in the GitHub Actions tab.
+name: Push Event - Branches and Paths
+
+# 'on': Specifies the trigger events and conditional filters for the workflow.
+on:
+  # 'push': Triggers automatically when code is pushed to the repository.
+  push:
+    # 'branches': Filter that restricts execution to pushes on specific branches.
+    branches:
+      # Only triggers when code is pushed to the 'development' branch.
+      - development
+
+    # 'paths': Filter that restricts execution based on modified file locations.
+    paths:
+      # Triggers only when at least one modified file is within the 'src/' directory tree.
+      # The '**' glob pattern recursively matches all subdirectories and files.
+      - 'src/**'
+
+# 'jobs': Groups together all automated tasks defined in this workflow.
+jobs:
+  # 'push-branches-paths': Unique identifier (job ID) assigned to this job.
+  push-branches-paths:
+    # 'name': Human-readable job label displayed in the GitHub UI.
+    name: Execute Branch and Path Filtered Steps
+
+    # 'runs-on': Specifies the hosted virtual machine environment.
+    # 'ubuntu-latest' provides a clean, isolated Ubuntu Linux runner.
+    runs-on: ubuntu-latest
+
+    # 'steps': Sequential list of commands and actions to execute.
+    steps:
+      # Step 1: Display a welcome message confirming filter conditions were met
+      # 'name': Step title displayed in execution logs.
+      # 'run': Executes shell command (bash on Ubuntu).
+      - name: Print Welcome Message
+        run: echo "Hello World! Branch and Path filters matched."
+
+      # Step 2: Display successful execution message
+      - name: Workflow Completed
+        run: echo "Push workflow executed successfully!"
+
