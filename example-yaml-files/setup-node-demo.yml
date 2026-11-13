@@ -90,3 +90,42 @@ jobs:
           echo "=== 3. Executing JavaScript Application ==="
           node src/index.js
 
+# Demystifying uses, with, and run
+# uses: Specifies which reusable tool or action to execute (actions/setup-node@v4).
+# with: The configuration map providing inputs to that action. In this example, it specifies node-version: 22.
+# run: Executes command-line scripts (e.g. node src/index.js, npm test) using whatever tools and versions were configured in earlier steps.
+# 4. Why Do We Need actions/setup-node in CI?
+
+# When GitHub boots an ubuntu-latest virtual machine, it includes a default version of Node.js. However, you must never rely on default runner versions in production CI/CD pipelines:
+
+# Eliminate Environment Drift: If GitHub updates its Ubuntu runner image from Node 20 to Node 22 next month, your build might break unexpectedly if your code depended on Node 20.
+# Deterministic Reproducibility: By writing node-version: 22, every run on every branch executes on the exact same Node.js runtime.
+# Cross-Version Matrix Testing: You can test your library across multiple Node versions (18, 20, 22) in parallel.
+# Built-in Dependency Caching: setup-node handles global npm/yarn/pnpm caching automatically.
+# 5. Additional setup-node Configuration Options
+# Option 1: Specify an Exact or Major Version
+# yaml
+# - name: Setup Node.js
+#   uses: actions/setup-node@v4
+#   with:
+#     node-version: '22' # Can be '22', '20.11.0', or '18.x'
+# Option 2: Read Version from a File (.nvmrc or package.json)
+
+# If your team uses NVM locally, you can keep your local and CI environments in sync by reading from .nvmrc:
+
+# yaml
+# - name: Setup Node.js from .nvmrc
+#   uses: actions/setup-node@v4
+#   with:
+#     node-version-file: '.nvmrc'
+# Option 3: Enable Automated Dependency Caching (cache: 'npm')
+# yaml
+# - name: Setup Node.js with Caching
+#   uses: actions/setup-node@v4
+#   with:
+#     node-version: 22
+#     cache: 'npm' # Automatically caches ~/.npm directory based on package-lock.json
+
+# TIP
+
+# Enabling cache: 'npm' can reduce npm ci install times from 2 minutes to 15 seconds on repeated pipeline runs!

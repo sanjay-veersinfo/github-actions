@@ -61,3 +61,63 @@ jobs:
         run: |
           echo "Scheduled workflow executed successfully!"
 
+
+# What is the schedule Event?
+
+# The schedule event is an automated timer trigger provided by GitHub Actions. Instead of waiting for an external developer action (like a code push or manual click), GitHub’s internal scheduler daemon fires the workflow automatically at predefined intervals.
+
+# What is UTC & Why Does Timezone Conversion Matter?
+# UTC stands for Coordinated Universal Time. It is the global zero-hour baseline (equivalent to GMT).
+# GitHub Actions only evaluates cron expressions in UTC. It does not support regional time zones directly inside the expression.
+# Conversion Formula for India Standard Time (IST):
+# IST
+# =
+# UTC
+# +
+# 5
+#  hours 
+# 30
+#  minutes
+# IST=UTC+5 hours 30 minutes
+# Therefore:
+# 09:00 UTC 
+# +
+# 5
+# :
+# 30
+# =
+# +5:30= 14:30 (2:30 PM IST).
+# If you want a workflow to run at 9:00 AM IST, subtract 5 hours and 30 minutes 
+# →
+# → 3:30 AM UTC (cron: '30 3 * * *').
+# How Does GitHub Actions Execute Scheduled Workflows?
+# GitHub maintains an internal task scheduler service.
+# When the clock matches your cron rule, the scheduler queries your repository's default branch (main or master).
+# It creates a workflow run event and assigns an ephemeral Ubuntu runner to execute the job steps.
+# Can We Define Multiple Cron Schedules in One Workflow?
+
+# Yes. schedule accepts a YAML array:
+
+# yaml
+# on:
+#   schedule:
+#     - cron: '0 9 * * 1-5' # Weekdays at 09:00 UTC
+#     - cron: '0 12 * * 0'  # Sundays at 12:00 UTC
+# Can Scheduled Workflows Execute on Specific Branches?
+
+# No. By architectural design in GitHub Actions, scheduled workflows strictly execute against the default branch (usually main). Even if you branch off into development or feature/xyz, the scheduled trigger always checks out and runs code from main.
+
+# What Happens if the Execution Time is Delayed or Missed?
+
+# During periods of heavy load across GitHub’s global infrastructure (especially at the top of the hour, like 00:00 or 09:00), runner queues may experience delay or jitter.
+
+# GitHub queues the job and executes it as soon as runner capacity is available.
+# If a schedule delay exceeds the subsequent scheduled interval, GitHub drops intermediate runs to avoid backlog thrashing.
+# 5. Critical GitHub Actions Rules & Gotchas
+# Always in UTC: No local timezone strings like EST or IST can be written in cron.
+# Default Branch Requirement: The workflow YAML file must be committed to the default branch (main). If it only exists in a feature branch, GitHub will never schedule it.
+# Minimum Interval (5 Minutes): GitHub Actions enforces a strict lower boundary: you cannot schedule tasks more frequently than once every 5 minutes (*/5 * * * *).
+# The "Top of the Hour" Traffic Spike Tip: Millions of workflows are scheduled at :00 past the hour (e.g., 0 9 * * *). To avoid delays, Senior DevOps engineers jitter their cron minutes (e.g., 17 9 * * * or 23 9 * * *).
+# Inactivity Auto-Disable (Public Repos): If a public repository has no commit activity for 60 consecutive days, GitHub automatically disables all scheduled workflows to conserve compute resources. GitHub sends an email notification before doing so, and you can re-enable them in the Actions tab.
+
+

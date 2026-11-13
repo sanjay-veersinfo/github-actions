@@ -45,3 +45,944 @@ jobs:
       # Step 3: Display successful completion message
       - name: Workflow Completed
         run: echo "Hello World workflow executed successfully!"
+
+
+# 1. What is a YAML File?
+# 1.1 What Does YAML Stand For?
+# Originally (2001): "Yet Another Markup Language" (reflecting its early purpose as a human-friendly markup format).
+# Modern Definition (Recursive Acronym): "YAML Ain't Markup Language".
+# The creators changed the meaning to emphasize that YAML is a data serialization language (like JSON), not a document markup language (like HTML or XML). It represents pure structured data rather than formatted text with tags.
+# 1.2 Purpose of YAML Files
+
+# A YAML file stores structured data in a plain-text format that is both:
+
+# Instantly readable by humans without visual clutter.
+# Easily parsable by machines across any programming language (Java, Go, Python, JavaScript, Rust).
+
+# Its primary purpose is configuration management, infrastructure-as-code (IaC), and pipeline orchestration.
+
+# 1.3 Why YAML is Dominant in Software Development & DevOps
+
+# Prior to YAML, systems relied heavily on XML or JSON for configuration:
+
+# Zero Boilerplate: No opening/closing tags (<config></config>), no braces ({}), and minimal commas.
+# First-Class Comment Support: Unlike JSON, YAML supports inline comments (#), making it ideal for documenting configuration files and team onboarding.
+# Clean Git Diffs: Because YAML is line-oriented, Git commits show crisp single-line changes instead of multi-line comma adjustments.
+# Universal Standard: Almost all major modern cloud and DevOps tools (Kubernetes, Docker Compose, GitHub Actions, GitLab CI, Ansible, Prometheus, Helm, OpenAPI/Swagger, Spring Boot) have standardized on YAML.
+# 1.4 Where and When Do We Use YAML?
+# Domain	Use Case / Tool	Common YAML Files
+# Backend Development	Spring Boot, Go (Viper), Node.js, Ruby on Rails	application.yml, config.yaml
+# Container Orchestration	Docker, Kubernetes, Helm	docker-compose.yml, deployment.yaml, values.yaml
+# CI/CD Automation	GitHub Actions, GitLab CI, Azure Pipelines	.github/workflows/deploy.yml, .gitlab-ci.yml
+# Infrastructure & Config	Ansible, Terraform Cloud, Prometheus	playbook.yml, prometheus.yml
+# API Documentation	OpenAPI Specification / Swagger	openapi.yaml, swagger.yaml
+# 1.5 Comparative Analysis: YAML vs. JSON vs. XML
+
+# To understand YAML's elegance, consider the exact same user configuration represented across all three formats:
+
+# YAML
+# yaml
+# user:
+#   name: Sanjay
+#   role: DevOps Engineer
+#   skills:
+#     - Docker
+#     - Kubernetes
+#     - Spring Boot
+# JSON
+# json
+# {
+#   "user": {
+#     "name": "Sanjay",
+#     "role": "DevOps Engineer",
+#     "skills": [
+#       "Docker",
+#       "Kubernetes",
+#       "Spring Boot"
+#     ]
+#   }
+# }
+# XML
+# xml
+# <user>
+#   <name>Sanjay</name>
+#   <role>DevOps Engineer</role>
+#   <skills>
+#     <skill>Docker</skill>
+#     <skill>Kubernetes</skill>
+#     <skill>Spring Boot</skill>
+#   </skills>
+# </user>
+# Comparison Matrix
+# Feature	YAML	JSON	XML
+# Primary Focus	Human readability & configuration	High-speed data exchange & APIs	Complex enterprise document modeling
+# Visual Complexity	Minimal (whitespace-driven)	Medium (braces, quotes, commas)	High (verbose opening/closing tags)
+# Comments Support	Yes (#)	No (forbidden in standard JSON)	Yes (<!-- comment -->)
+# Data Types	Strings, Ints, Floats, Booleans, Dates, Null	Strings, Numbers, Booleans, Null	Pure text nodes (requires schema parsing)
+# Superset Relationship	YAML 1.2 is a strict superset of JSON	Valid JSON is valid YAML	Distinct family
+# Parsing Speed	Moderate	Fast	Moderate to Slow
+# Primary Use Cases	Configs, CI/CD, Kubernetes, Docker	REST APIs, Browser-Server data	Enterprise SOAP, Android manifests
+# 1.6 File Extensions: .yaml vs. .yml
+# .yaml: The official extension recommended by the YAML.org standard.
+# .yml: Originated during the MS-DOS / early Windows era where file systems enforced 3-letter extension limits (8.3 filename conventions).
+# Technical Difference: None. Every modern parser (Spring Boot, Docker, GitHub Actions, VS Code, Go) treats .yaml and .yml identically.
+# Industry Standard Practice: Choose one convention across your repository and remain consistent. For example, Docker Compose and Spring Boot communities historically favor .yml, while Kubernetes manifests frequently use .yaml.
+# 2. YAML Syntax and Basic Rules
+
+# YAML’s syntax is clean because it uses indentation to denote structure instead of brackets.
+
+# 2.1 Key-Value Pairs
+
+# Data is stored as key: value.
+
+# yaml
+# # Note the mandatory space after the colon
+# name: Order Service
+# port: 8080
+# status: active
+
+# IMPORTANT
+
+# The colon (:) must be followed by a space. Writing port:8080 is invalid YAML syntax.
+
+# 2.2 Indentation and Spacing
+# Spaces Only: YAML strictly forbids TAB characters for indentation. Pressing Tab in an editor must insert spaces.
+# Consistent Spacing: The industry standard is 2 spaces per indentation level.
+# Elements at the same indentation level belong to the same hierarchy.
+# yaml
+# # Correct: 2-space indentation
+# server:
+#   host: localhost
+#   port: 8080
+# # Incorrect: Tab character or mismatched spacing causes immediate parser failure
+# 2.3 Nested Objects (Mappings)
+
+# To create child objects, increase the indentation under the parent key:
+
+# yaml
+# database:
+#   connection:
+#     host: 127.0.0.1
+#     port: 5432
+#   pool:
+#     min_size: 5
+#     max_size: 20
+# 2.4 Lists and Arrays
+
+# There are two ways to represent lists in YAML:
+
+# Block Style (Standard in DevOps)
+
+# Each item begins with a hyphen followed by a space (-):
+
+# yaml
+# environments:
+#   - development
+#   - staging
+#   - production
+# Flow Style (Inline / JSON-compatible)
+
+# Enclosed in square brackets:
+
+# yaml
+# environments: [development, staging, production]
+# List of Objects (Very common in Kubernetes and Docker)
+# yaml
+# users:
+#   - id: 101
+#     name: Alice
+#     role: Admin
+#   - id: 102
+#     name: Bob
+#     role: Developer
+# 2.5 Strings and Numbers
+# Integers & Floats: Handled automatically without quotes.
+# yaml
+# item_count: 42
+# price: 19.99
+# ratio: 1.2e+3
+# Strings: Usually do not require quotation marks unless they contain special characters.
+# yaml
+# simple_string: hello world
+# single_quoted: 'Preserves literal string, no escapes parsed'
+# double_quoted: "Supports escapes like \n and \"escaped quotes\""
+# 2.6 Boolean Values
+
+# Booleans represent true or false.
+
+# yaml
+# is_active: true
+# debug_enabled: false
+
+# WARNING
+
+# In older YAML 1.1 specifications, words like yes, no, on, off were evaluated as booleans. This caused the famous "Norway Problem": If you configured country codes as country: NO, YAML evaluated it as country: false! Senior Practice: Always use explicit true / false, or wrap codes in quotes: country: "NO".
+
+# 2.7 Null Values
+
+# Null can be written using null, a tilde (~), or simply leaving the value empty:
+
+# yaml
+# description: null
+# notes: ~
+# metadata:
+# 2.8 Comments
+
+# Single-line comments begin with #:
+
+# yaml
+# # This is a full-line comment
+# timeout: 60 # This is an inline comment
+
+# (YAML does not support multi-line block comments like /* ... */. Use multiple # lines).
+
+# 2.9 Multi-Line Strings: Literal (|) vs. Folded (>)
+
+# When writing scripts, certificates, or long descriptions:
+
+# The Literal Indicator (|) – Preserves Newlines
+
+# Maintains exact line breaks. Used for bash scripts and SSH keys.
+
+# yaml
+# script: |
+#   echo "Step 1: Preparing build"
+#   echo "Step 2: Executing tests"
+#   echo "Step 3: Done"
+
+# Result in memory: "echo \"Step 1...\"\necho \"Step 2...\"\necho \"Step 3...\"\n"
+
+# The Folded Indicator (>) – Replaces Newlines with Spaces
+
+# Folds multiple lines into a single long string, keeping double line breaks as new paragraphs:
+
+# yaml
+# description: >
+#   This is a very long description
+#   that spans multiple lines in the source
+#   file for readability, but becomes a single line.
+
+# Result in memory: "This is a very long description that spans multiple lines in the source file for readability, but becomes a single line.\n"
+
+# Chomping Modifiers:
+# |- or >- (Strip): Removes all trailing newlines.
+# |+ or >+ (Keep): Keeps all trailing empty lines.
+# | or > (Clip - default): Keeps exactly one trailing newline.
+# 2.10 Anchors (&), Aliases (*), and Merges (<<:)
+
+# This advanced YAML feature enables the DRY (Don't Repeat Yourself) principle:
+
+# yaml
+# # Define an anchor &default_db
+# default_config: &default_db
+#   host: localhost
+#   port: 5432
+#   pool_size: 10
+# # Reference it using alias *default_db with merge key <<
+# services:
+#   order_db:
+#     <<: *default_db
+#     database_name: orders
+#   payment_db:
+#     <<: *default_db
+#     database_name: payments
+#     pool_size: 25 # Overrides the default 10
+# 2.11 Environment Variables and Placeholders
+
+# IMPORTANT
+
+# YAML Syntax vs. Application Parser: Pure YAML does not expand environment variables like $USER on its own. It simply reads ${VAR} as a raw string literal. The runtime application (such as Spring Boot's property loader, Docker Compose CLI, or GitHub Actions engine) parses those strings and substitutes the environment variable value.
+
+# Spring Boot Syntax: ${DATABASE_URL:jdbc:postgresql://localhost:5432/default} (Uses fallback default after the :).
+# Docker Compose Syntax: ${DB_PORT:-5432} (Uses fallback default after :-).
+# GitHub Actions Syntax: ${{ secrets.DOCKER_TOKEN }} (Evaluated by GitHub's expression engine before execution).
+# 2.12 Special Characters and Quoting Rules
+
+# You must wrap strings in quotes (" or ') if they contain any of the following characters: : (when followed by a space), [, ], {, }, ,, &, *, #, ?, |, -, <, >, =, !, %, @, \
+
+# yaml
+# # Invalid (causes parse failure):
+# message: Error: connection timed out
+# email: user@domain.com
+# flag: *special
+# # Valid (safely quoted):
+# message: "Error: connection timed out"
+# email: "user@domain.com"
+# flag: "*special"
+# 2.13 Valid vs. Invalid YAML Syntax Comparison
+# Invalid YAML (Common Syntax Traps)
+# yaml
+# # ERROR 1: Tab used instead of spaces
+# server:
+# 	port: 8080
+# # ERROR 2: Missing space after colon
+# database:
+#   host:localhost
+# # ERROR 3: Mismatched indentation between siblings
+# app:
+#   name: order-service
+#    version: 1.0.0
+# # ERROR 4: List indicator not followed by a space
+# items:
+#   -item1
+# Valid YAML (Correct Formatting)
+# yaml
+# # CORRECT 1: 2 spaces per level
+# server:
+#   port: 8080
+# # CORRECT 2: Space after colon
+# database:
+#   host: localhost
+# # CORRECT 3: Exact vertical alignment
+# app:
+#   name: order-service
+#   version: 1.0.0
+# # CORRECT 4: Space after hyphen
+# items:
+#   - item1
+# 3. Practical YAML Examples
+
+# All files below have been written directly to your workspace. You can inspect or open them at any time.
+
+# Example 1: Basic Application Configuration
+
+# File created at: 01-basic-config.yml
+
+# yaml
+# app:
+#   name: "E-Commerce Gateway"
+#   version: "2.4.1"
+#   environment: "production"
+#   maintenance_mode: false
+#   timeout_seconds: 30
+#   cache_ratio: 0.85
+#   deprecation_notice: null
+# server:
+#   host: "0.0.0.0"
+#   port: 8080
+#   ssl:
+#     enabled: true
+#     certificate_path: "/etc/ssl/certs/server.crt"
+# cors:
+#   allowed_origins:
+#     - "https://app.example.com"
+#     - "https://admin.example.com"
+#     - "http://localhost:3000"
+# features:
+#   user_registration: true
+#   beta_checkout: false
+#   max_retry_attempts: 3
+# Example 2: Spring Boot Application Configuration
+
+# File created at: 02-application.yml
+
+# yaml
+# server:
+#   port: 8080
+#   servlet:
+#     context-path: /api/v1
+# spring:
+#   application:
+#     name: order-service
+#   datasource:
+#     url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:orders_db}
+#     username: ${DB_USERNAME:postgres}
+#     password: ${DB_PASSWORD:postgres123}
+#     driver-class-name: org.postgresql.Driver
+#     hikari:
+#       maximum-pool-size: 10
+#       minimum-idle: 5
+#       idle-timeout: 300000
+#       connection-timeout: 20000
+#   jpa:
+#     hibernate:
+#       ddl-auto: update
+#     show-sql: true
+#     open-in-view: false
+#     properties:
+#       hibernate:
+#         dialect: org.hibernate.dialect.PostgreSQLDialect
+#         format_sql: true
+# logging:
+#   level:
+#     root: INFO
+#     org.springframework.web: WARN
+#     org.hibernate.SQL: DEBUG
+#     com.example.orderservice: DEBUG
+#   pattern:
+#     console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+# Example 3: Docker Compose Multi-Container Orchestration
+
+# File created at: 03-docker-compose.yml
+
+# yaml
+# services:
+#   backend:
+#     build:
+#       context: .
+#       dockerfile: Dockerfile
+#     container_name: order-service-app
+#     restart: always
+#     ports:
+#       - "8080:8080"
+#     environment:
+#       SPRING_PROFILES_ACTIVE: docker
+#       DB_HOST: postgres-db
+#       DB_PORT: 5432
+#       DB_NAME: orders_db
+#       DB_USERNAME: postgres
+#       DB_PASSWORD: supersecretpassword
+#     depends_on:
+#       postgres-db:
+#         condition: service_healthy
+#     networks:
+#       - app-network
+#   postgres-db:
+#     image: postgres:15-alpine
+#     container_name: postgres-db
+#     restart: always
+#     ports:
+#       - "5432:5432"
+#     environment:
+#       POSTGRES_DB: orders_db
+#       POSTGRES_USER: postgres
+#       POSTGRES_PASSWORD: supersecretpassword
+#     volumes:
+#       - postgres-data:/var/lib/postgresql/data
+#     healthcheck:
+#       test: ["CMD-SHELL", "pg_isready -U postgres -d orders_db"]
+#       interval: 10s
+#       timeout: 5s
+#       retries: 5
+#     networks:
+#       - app-network
+# volumes:
+#   postgres-data:
+#     driver: local
+# networks:
+#   app-network:
+#     driver: bridge
+# Example 4: GitHub Actions CI/CD Pipeline
+
+# File created at: 04-deploy.yml
+
+# yaml
+# name: CI/CD Deployment Pipeline
+# on:
+#   push:
+#     branches:
+#       - development
+#       - main
+#   pull_request:
+#     branches:
+#       - development
+# jobs:
+#   build-and-deploy:
+#     name: Build, Containerize and Deploy
+#     runs-on: ubuntu-latest
+#     steps:
+#       - name: Checkout Source Code
+#         uses: actions/checkout@v4
+#       - name: Set up JDK 17
+#         uses: actions/setup-java@v4
+#         with:
+#           java-version: '17'
+#           distribution: 'temurin'
+#           cache: maven
+#       - name: Build Application with Maven
+#         run: mvn clean package -DskipTests
+#       - name: Log in to Docker Hub
+#         uses: docker/login-action@v3
+#         with:
+#           username: ${{ secrets.DOCKERHUB_USERNAME }}
+#           password: ${{ secrets.DOCKERHUB_TOKEN }}
+#       - name: Build and Push Docker Image
+#         uses: docker/build-push-action@v5
+#         with:
+#           context: .
+#           push: true
+#           tags: ${{ secrets.DOCKERHUB_USERNAME }}/order-service:latest
+#       - name: Deploy to Ubuntu Server via SSH
+#         uses: appleboy/ssh-action@v1.0.3
+#         with:
+#           host: ${{ secrets.SERVER_HOST }}
+#           username: ${{ secrets.SERVER_USER }}
+#           key: ${{ secrets.SERVER_SSH_KEY }}
+#           script: |
+#             echo "Deploying latest application containers..."
+#             cd /opt/app
+#             docker compose pull
+#             docker compose up -d --remove-orphans
+# 4. YAML Structure Explanation (Line-by-Line Breakdown)
+# 4.1 Deconstructing Example 1: Basic Configuration
+# app: (Root Parent Key) Defines the application metadata group.
+# name: "E-Commerce Gateway": Child string value identifying the app name.
+# version: "2.4.1": SemVer version string. Always quoted so parsers do not treat version numbers like 2.4 as floats.
+# maintenance_mode: false: Boolean flag disabling maintenance mode.
+# timeout_seconds: 30: Integer representing connection threshold in seconds.
+# cache_ratio: 0.85: Float scalar parsed as floating-point precision.
+# deprecation_notice: null: Explicit absence of a value (equivalent to Java null or Go nil).
+# server: (Root Parent Key) Network listening configuration.
+# host: "0.0.0.0": Binds to all network interfaces.
+# port: 8080: Listening TCP port.
+# ssl:: Nested child mapping under server.
+# enabled: true: Enables TLS/HTTPS.
+# certificate_path: "/etc/ssl/certs/server.crt": Filesystem path to public cert.
+# cors: (Root Parent Key) Cross-Origin Resource Sharing settings.
+# allowed_origins:: List parent key.
+# - "https://app.example.com": List entry 1 (string).
+# - "https://admin.example.com": List entry 2 (string).
+# - "http://localhost:3000": List entry 3 (string for local frontend dev).
+# 4.2 Deconstructing Example 2: Spring Boot application.yml
+# server:
+# port: 8080: Maps to Spring Boot's server.port property.
+# servlet.context-path: /api/v1: Prefixes all REST endpoints with /api/v1.
+# spring: Root object mapping directly to Spring Boot autoconfiguration.
+# application.name: order-service: Registers the microservice name in Spring ApplicationContext.
+# datasource: Database connection block.
+# url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:orders_db}:
+# Hierarchy: spring.datasource.url.
+# Interpretation: Spring inspects runtime environment variables. If DB_HOST is set in the OS/Docker, it injects it; otherwise, it falls back to localhost.
+# username: ${DB_USERNAME:postgres}: Injects database username.
+# password: ${DB_PASSWORD:postgres123}: Injects database password.
+# driver-class-name: org.postgresql.Driver: Full Java package path for PostgreSQL JDBC driver.
+# hikari: Database connection pool settings (HikariCP).
+# maximum-pool-size: 10: Max active connections allowed.
+# jpa: Java Persistence API and Hibernate configurations.
+# hibernate.ddl-auto: update: Tells Hibernate to automatically synchronize database tables with Java @Entity models.
+# show-sql: true: Prints generated SQL queries to console.
+# properties.hibernate.dialect: org.hibernate.dialect.PostgreSQLDialect: Explicit SQL dialect optimization.
+# logging:
+# level.root: INFO: Default logging threshold for third-party libraries.
+# level.com.example.orderservice: DEBUG: Custom application package set to verbose DEBUG level.
+# 4.3 Deconstructing Example 3: docker-compose.yml
+# services: Root key declaring all containers to be run.
+# backend: Service identifier.
+# build: Instructs Docker Compose to build a custom image.
+# context: .: Working directory containing source code.
+# dockerfile: Dockerfile: Target Dockerfile name.
+# container_name: order-service-app: Explicit human-readable container name.
+# restart: always: Restarts the container automatically on crash or host reboot.
+# ports: List of port forwardings.
+# - "8080:8080": HOST_PORT:CONTAINER_PORT. Quoted so YAML doesn't interpret numbers with colons as sexagesimal (base-60).
+# environment: Injects OS environment variables into the container runtime.
+# DB_HOST: postgres-db: Uses Docker's internal DNS resolution to point to the other service.
+# depends_on: Startup dependency control.
+# condition: service_healthy: Backend will wait to start until PostgreSQL passes its healthcheck!
+# networks: Attaches the container to app-network.
+# postgres-db: Database container definition.
+# image: postgres:15-alpine: Pre-built lightweight PostgreSQL image pulled from Docker Hub.
+# volumes: Storage persistence.
+# - postgres-data:/var/lib/postgresql/data: Maps named volume postgres-data to Postgres storage dir so data survives container destructions.
+# healthcheck: Verifies database readiness before downstream containers connect.
+# test: ["CMD-SHELL", "pg_isready -U postgres -d orders_db"]: Runs PostgreSQL readiness CLI.
+# volumes: Root key declaring persistent named storage volumes.
+# networks: Root key declaring custom network bridge for isolated inter-container communication.
+# 4.4 Deconstructing Example 4: GitHub Actions deploy.yml
+# name: CI/CD Deployment Pipeline: Workflow display title shown in GitHub UI.
+# on: Event trigger mapping.
+# push.branches: Executes pipeline whenever code is pushed to development or main.
+# pull_request.branches: Executes pipeline on PR creation against development.
+# jobs: Root map of jobs running on GitHub runners.
+# build-and-deploy: Unique job ID.
+# runs-on: ubuntu-latest: Specifies the virtual machine runner environment (Ubuntu Linux).
+# steps: Sequential list of tasks executed in order.
+# - name: Checkout Source Code: Human-friendly step name.
+# uses: actions/checkout@v4: Reusable GitHub Action cloning the repository.
+# - name: Set up JDK 17: Configures Java compiler.
+# with: Input parameters passed to the action (java-version: '17').
+# - name: Build Application with Maven:
+# run: mvn clean package -DskipTests: Executes a shell command directly on the Ubuntu runner.
+# - name: Log in to Docker Hub:
+# uses: docker/login-action@v3:
+# username: ${{ secrets.DOCKERHUB_USERNAME }}: Securely reads encrypted token from GitHub Repository Secrets.
+# - name: Deploy to Ubuntu Server via SSH:
+# uses: appleboy/ssh-action@v1.0.3: Establishes SSH connection to target production VM.
+# script: |: Multi-line bash commands executed remotely on the production server.
+# 5. Common YAML Mistakes and How to Fix Them
+# Mistake 1: Using Tabs Instead of Spaces
+# Problem: The YAML specification strictly forbids tab characters (\t). A single tab produces a fatal parse error (parser error: found character that cannot start any token).
+# Incorrect:
+# yaml
+# database:
+# 	host: localhost   # <-- Tab inserted here!
+# Corrected:
+# yaml
+# database:
+#   host: localhost   # <-- Exactly 2 space characters
+# Mistake 2: Missing Space After Colon
+# Problem: YAML requires a space between the colon and the value to recognize key-value separation.
+# Incorrect:
+# yaml
+# server:
+#   port:8080         # <-- Parsed as key "port:8080" without a value!
+# Corrected:
+# yaml
+# server:
+#   port: 8080        # <-- Space added after colon
+# Mistake 3: The "Norway Problem" (Boolean vs. String Mismatch)
+# Problem: In YAML 1.1, NO is evaluated as the boolean false. Country codes, postal codes, and unquoted strings can trigger subtle production bugs.
+# Incorrect:
+# yaml
+# user:
+#   country: NO       # <-- Evaluated by parser as: country: false
+#   zip_code: 01234   # <-- Evaluated as octal number: 668!
+# Corrected:
+# yaml
+# user:
+#   country: "NO"     # <-- Explicit string
+#   zip_code: "01234" # <-- Explicit string preserving leading zero
+# Mistake 4: Incorrect List Item Indentation
+# Problem: Hyphen not aligned with parent key or missing a space after -.
+# Incorrect:
+# yaml
+# cors:
+#   allowed_origins:
+#   -http://localhost # <-- Missing space after hyphen
+#    -http://test.com # <-- Misaligned indentation
+# Corrected:
+# yaml
+# cors:
+#   allowed_origins:
+#     - "http://localhost"
+#     - "http://test.com"
+# Mistake 5: Duplicate Keys in the Same Mapping
+# Problem: Having the exact same key twice under the same parent. Depending on the parser, the second key either silently overwrites the first or throws an exception.
+# Incorrect:
+# yaml
+# logging:
+#   level: INFO
+#   pattern: console
+#   level: DEBUG      # <-- Duplicate key! Overwrites INFO or fails
+# Corrected:
+# yaml
+# logging:
+#   level: DEBUG
+#   pattern: console
+# Mistake 6: Unquoted Special Characters (Colons and Asterisks)
+# Problem: An asterisk * without quotes is interpreted as a YAML alias reference. A colon with a space inside a string breaks the parser.
+# Incorrect:
+# yaml
+# regex: *.*                 # <-- Parser thinks you are referencing alias ".*"
+# commit_message: Fix: bug   # <-- Colon followed by space confuses parser
+# Corrected:
+# yaml
+# regex: "*.*"
+# commit_message: "Fix: bug"
+# 6. YAML Validation, Tooling, and Best Practices
+# 6.1 How to Validate YAML Files
+
+# You can validate YAML syntax locally using common CLI tools:
+
+# Using Python (Pre-installed on most systems)
+# bash
+# python -c "import yaml; yaml.safe_load(open('application.yml'))" && echo "YAML is valid!"
+# Using yamllint (Industry Standard Linter)
+# bash
+# # Install via pip
+# pip install yamllint
+# # Run against your file or folder
+# yamllint 03-docker-compose.yml
+# 6.2 Recommended VS Code Extensions
+# YAML by Red Hat (redhat.vscode-yaml):
+# Auto-formats YAML with 2 spaces.
+# Provides JSON Schema validation (auto-completes GitHub Actions, Docker Compose, and Kubernetes manifests based on official schemas).
+# Highlights syntax errors and tabs immediately in red.
+# GitHub Actions (github.vscode-github-actions):
+# Validates .github/workflows/*.yml syntax, parameters, and secret names directly inside the IDE.
+# 6.3 Best Practices for Maintaining YAML Configurations
+# Always Use 2 Spaces: Configure your IDE editor settings:
+# json
+# "[yaml]": {
+#   "editor.tabSize": 2,
+#   "editor.insertSpaces": true
+# }
+# Quote Ambiguous Strings: Always quote version numbers ("1.0"), dates ("2026-11-12"), and strings containing colons or symbols.
+# Use Anchors for Large Repeated Blocks: In multi-service Docker Compose files, use anchors (&) and merges (<<:) to prevent duplication.
+# Enforce Linting in CI: Add a yamllint step in your GitHub Actions workflow so broken indentation never reaches production.
+# 6.4 Managing Sensitive Information Securely
+
+# CAUTION
+
+# Never commit passwords, private keys, or API tokens directly into YAML files. Any file committed to Git history can be compromised.
+
+# Industry Solutions:
+# GitHub Actions Secrets:
+# Store secrets in GitHub repo settings (Settings -> Secrets and variables -> Actions).
+# Reference them in YAML as: ${{ secrets.DB_PASSWORD }}.
+# Docker Compose with Gitignored .env:
+# Keep secret declarations in a local .env file added to .gitignore:
+# env
+# POSTGRES_PASSWORD=my_super_secret_password_123
+# Reference in docker-compose.yml as ${POSTGRES_PASSWORD}.
+# Spring Boot Externalization:
+# Pass secrets as OS environment variables at container launch:
+# bash
+# docker run -e DB_PASSWORD="secret" my-spring-app:latest
+# GitOps & Production Secrets:
+# Tools like Mozilla SOPS or Sealed Secrets encrypt sensitive values inside YAML so they can be safely stored in Git and decrypted only inside the Kubernetes cluster or production server.
+# 7. Real-World Project Structure & Usage in Your Stack
+
+# Here is how YAML files fit into a production full-stack microservices repository (Spring Boot + Go + React + PostgreSQL + Docker + GitHub Actions):
+
+# text
+# my-project/
+# │
+# ├── .github/
+# │   └── workflows/
+# │       ├── backend-ci.yml           # Runs Maven build, unit tests, Docker push
+# │       ├── frontend-ci.yml          # Runs npm build, React tests
+# │       └── deploy.yml               # SSH deployment to Ubuntu production server
+# │
+# ├── backend-spring/                  # Java 17 + Spring Boot
+# │   ├── src/
+# │   │   └── main/
+# │   │       └── resources/
+# │   │           ├── application.yml         # Base configuration
+# │   │           ├── application-dev.yml     # Local dev profile (Postgres on localhost)
+# │   │           └── application-prod.yml    # Production profile (Reads env vars)
+# │   ├── Dockerfile
+# │   └── pom.xml
+# │
+# ├── backend-go/                      # High-performance Go microservice
+# │   ├── config/
+# │   │   └── config.yaml              # Loaded by Viper library into Go structs
+# │   ├── Dockerfile
+# │   └── main.go
+# │
+# ├── frontend-react/                  # React Single Page App
+# │   ├── Dockerfile                   # Multi-stage build with Nginx
+# │   └── package.json
+# │
+# ├── docker-compose.yml               # Local orchestration (Spring + Go + Postgres)
+# ├── docker-compose.prod.yml          # Production overrides for Ubuntu server
+# └── .env.example                     # Example environment template
+# How YAML is Handled During Execution:
+# Build Time: GitHub Actions reads .github/workflows/deploy.yml to sequence build and test commands.
+# Orchestration Time: Docker engine on your Ubuntu server reads docker-compose.yml to create container networks, mount PostgreSQL data volumes, and bind host ports.
+# Runtime: Spring Boot's internal SnakeYAML library reads application.yml, parses the tree into Spring's Environment, and binds values to Java @Value annotations or @ConfigurationProperties classes.
+# 8. Learning Exercises and Solutions
+# 8.1 Beginner Exercises
+# Exercise 1: Format a Personal Profile
+# Task: Create a YAML representation of a software developer with keys: name, age, role, skills (a list of 3 languages), and available_for_hire (boolean).
+# Solution:
+# yaml
+# developer:
+#   name: "Sanjay"
+#   age: 26
+#   role: "DevOps Engineer"
+#   skills:
+#     - Java
+#     - Go
+#     - Python
+#   available_for_hire: true
+# Explanation: Demonstrates string quoting, integer, list of strings, and boolean scalar.
+# Exercise 2: Fix the Indentation
+# Task: Identify and fix the syntax errors in this snippet:
+# yaml
+# database:
+#   host: localhost
+#  port: 5432
+#   credentials:
+#   username: admin
+# Solution:
+# yaml
+# database:
+#   host: localhost
+#   port: 5432
+#   credentials:
+#     username: admin
+# Explanation: port was misaligned by 1 space, and username must be indented under its parent credentials.
+# Exercise 3: Web Server Settings
+# Task: Write a configuration for an Nginx web server with listen_port 80, server_name "example.com", and routes mapping / to /var/www/html and /api to http://localhost:8080.
+# Solution:
+# yaml
+# server:
+#   listen_port: 80
+#   server_name: "example.com"
+#   routes:
+#     - path: "/"
+#       proxy_pass: "/var/www/html"
+#     - path: "/api"
+#       proxy_pass: "http://localhost:8080"
+# Explanation: Shows nested maps inside an array (routes).
+# Exercise 4: Convert JSON to YAML
+# Task: Convert the following JSON to clean YAML block style: {"status":"success","code":200,"data":{"orders":[101,102,103]}}
+# Solution:
+# yaml
+# status: "success"
+# code: 200
+# data:
+#   orders:
+#     - 101
+#     - 102
+#     - 103
+# Explanation: Converts nested JSON curly braces and square brackets into whitespace indentation and hyphens.
+# Exercise 5: Representing Null and Multiline
+# Task: Write a YAML key notes containing a 2-line warning message, and a key external_token with an explicit null value.
+# Solution:
+# yaml
+# notes: |
+#   Warning: Do not alter configuration during deployment.
+#   Contact operations for questions.
+# external_token: null
+# Explanation: Uses | to preserve the 2 distinct lines and null to explicitly represent an empty value.
+# 8.2 Intermediate Exercises
+# Exercise 6: Spring Boot Logging Profile
+# Task: Write a Spring Boot logging: block that sets root level to WARN, sets org.springframework.security to DEBUG, and sets log file path to /var/log/app.log.
+# Solution:
+# yaml
+# logging:
+#   file:
+#     name: "/var/log/app.log"
+#   level:
+#     root: WARN
+#     org.springframework.security: DEBUG
+# Explanation: Maps directly to Spring Boot's hierarchical logging properties.
+# Exercise 7: Docker Compose Port Mapping Quoting
+# Task: Write a Docker Compose service named redis using image redis:7-alpine, with port 6379:6379, and an environment variable ALLOW_EMPTY_PASSWORD: "yes". Explain why quotes are required.
+# Solution:
+# yaml
+# services:
+#   redis:
+#     image: redis:7-alpine
+#     ports:
+#       - "6379:6379"
+#     environment:
+#       ALLOW_EMPTY_PASSWORD: "yes"
+# Explanation: Without quotes, 6379:6379 could be parsed as base-60 sexagesimal, and yes would be converted to the boolean true instead of the string "yes".
+# Exercise 8: Multi-Stage GitHub Actions Matrix
+# Task: Create a GitHub Actions job definition using a build matrix to test on Node versions 18 and 20 across Ubuntu and Windows.
+# Solution:
+# yaml
+# jobs:
+#   test:
+#     strategy:
+#       matrix:
+#         os: [ubuntu-latest, windows-latest]
+#         node-version: [18, 20]
+#     runs-on: ${{ matrix.os }}
+#     steps:
+#       - uses: actions/setup-node@v4
+#         with:
+#           node-version: ${{ matrix.node-version }}
+# Explanation: Shows flow-style arrays ([18, 20]) and GitHub expression interpolation ${{ matrix.os }}.
+# Exercise 9: Advanced Anchors & Aliases
+# Task: Use YAML anchors (&) and merge keys (<<:) to define a base microservice template with restart: always and networks: [app-net], and reuse it for user-service and catalog-service.
+# Solution:
+# yaml
+# x-common-service: &service-template
+#   restart: always
+#   networks:
+#     - app-net
+# services:
+#   user-service:
+#     <<: *service-template
+#     image: myorg/user-service:1.0
+#     ports:
+#       - "8001:8001"
+#   catalog-service:
+#     <<: *service-template
+#     image: myorg/catalog-service:1.0
+#     ports:
+#       - "8002:8002"
+# Explanation: x- is standard Docker Compose syntax for reusable extension fields. <<: *service-template merges common configuration without repetition. Check 05-advanced-anchors.yml for another example.
+# Exercise 10: Spring Boot DataSource with Fallback
+# Task: Configure a Spring Boot datasource URL that reads from an environment variable DATABASE_URL, but defaults to jdbc:postgresql://localhost:5432/testdb if the variable is unset.
+# Solution:
+# yaml
+# spring:
+#   datasource:
+#     url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/testdb}
+# Explanation: Demonstrates Spring Boot's ${VAR_NAME:fallback_value} syntax.
+# 8.3 Real-World DevOps Exercises
+# DevOps Exercise 1: Production PostgreSQL Container with Volume & Healthcheck
+# Scenario: You need to deploy a PostgreSQL 15 database container that automatically initialises commerce_db, stores data persistently on the host, and has a healthcheck so dependent services know when it is ready.
+# Solution:
+# yaml
+# services:
+#   database:
+#     image: postgres:15-alpine
+#     container_name: production-postgres
+#     restart: unless-stopped
+#     environment:
+#       POSTGRES_DB: commerce_db
+#       POSTGRES_USER: ${DB_USER:-admin}
+#       POSTGRES_PASSWORD: ${DB_PASSWORD}
+#     ports:
+#       - "127.0.0.1:5432:5432"  # Bound strictly to localhost for security
+#     volumes:
+#       - postgres_data:/var/lib/postgresql/data
+#     healthcheck:
+#       test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-admin} -d commerce_db"]
+#       interval: 10s
+#       timeout: 5s
+#       retries: 5
+#       start_period: 10s
+# volumes:
+#   postgres_data:
+#     driver: local
+# Explanation:
+# Binds port strictly to 127.0.0.1 so the database is not exposed to the public internet.
+# Uses healthcheck with start_period to give Postgres 10 seconds to initialize before failure counting begins.
+# DevOps Exercise 2: GitHub Actions Automated Maven Testing and Artifact Upload
+# Scenario: Write a GitHub Actions job that triggers on pull requests to main, compiles Java 17 using Maven, runs unit tests, and uploads the generated .jar file as a build artifact.
+# Solution:
+# yaml
+# name: Backend Build & Test
+# on:
+#   pull_request:
+#     branches:
+#       - main
+# jobs:
+#   build:
+#     runs-on: ubuntu-latest
+#     steps:
+#       - name: Check out repository
+#         uses: actions/checkout@v4
+#       - name: Set up Temurin JDK 17
+#         uses: actions/setup-java@v4
+#         with:
+#           java-version: '17'
+#           distribution: 'temurin'
+#           cache: maven
+#       - name: Run Maven Tests
+#         run: mvn clean test
+#       - name: Package JAR
+#         run: mvn package -DskipTests
+#       - name: Archive Production JAR Artifact
+#         uses: actions/upload-artifact@v4
+#         with:
+#           name: app-jar-package
+#           path: target/*.jar
+#           retention-days: 7
+# Explanation:
+# Uses cache: maven to automatically cache dependencies in ~/.m2, speeding up CI build times.
+# Archives the resulting JAR using upload-artifact@v4 with a 7-day retention policy.
+# DevOps Exercise 3: Zero-Downtime Ubuntu SSH Deployment Script
+# Scenario: Write a deployment job step in GitHub Actions that connects to an Ubuntu server over SSH, navigates to /opt/production, pulls the newest Docker images, reloads the containers without downtime, and removes unused dangling images.
+# Solution:
+# yaml
+# - name: Execute Remote Deployment via SSH
+#   uses: appleboy/ssh-action@v1.0.3
+#   with:
+#     host: ${{ secrets.PROD_SERVER_IP }}
+#     username: ${{ secrets.PROD_SSH_USER }}
+#     key: ${{ secrets.PROD_SSH_PRIVATE_KEY }}
+#     port: 22
+#     script_stop: true
+#     script: |
+#       echo "=== Navigating to deployment directory ==="
+#       cd /opt/production
+#       echo "=== Pulling newest container images ==="
+#       docker compose pull
+#       echo "=== Recreating updated containers ==="
+#       docker compose up -d --remove-orphans
+#       echo "=== Cleaning up dangling images ==="
+#       docker image prune -f
+#       echo "=== Deployment Successfully Completed ==="
+# Explanation:
+# script_stop: true: Halts the pipeline immediately if any command in the bash script returns a non-zero exit code.
+# docker compose up -d --remove-orphans: Recreates only containers whose images or configurations changed.
+# docker image prune -f: Reclaims disk space on the remote server by removing old untagged image layers.
+

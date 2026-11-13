@@ -74,3 +74,135 @@ jobs:
         run: |
           echo "Runner context workflow completed successfully!"
 
+
+# A workflow file is just a set of declarative YAML instructions. It cannot execute itself. The runner is the actual server or container running the GitHub Actions Runner application that listens for jobs, runs your shell scripts, checks out code, and reports logs back to GitHub.
+
+# What Happens When a Workflow Job Starts?
+# Queued: GitHub places the job in a queue.
+# Provisioning: GitHub allocates a fresh, isolated virtual machine (VM).
+# Execution: The Runner agent runs your steps sequentially.
+# Teardown: When the job finishes (pass or fail), the entire virtual machine is destroyed. No data leaks to other jobs or repositories.
+# GitHub-Hosted vs. Self-Hosted Runners
+# Feature	GitHub-Hosted Runners	Self-Hosted Runners
+# Management	Managed entirely by GitHub	Managed by your DevOps team (cloud/on-prem)
+# Maintenance & Patching	Automatic OS updates & pre-installed tools	You must patch, secure, and maintain the OS
+# Environment Lifecycle	Ephemeral (fresh clean VM per job)	Persistent (state remains unless reset)
+# Custom Hardware / GPU	Standard VMs (2–64 vCPUs)	Any custom hardware, on-prem servers, GPUs
+# Internal VPC Access	Needs public IP / OpenVPN / WireGuard	Can sit directly inside your private AWS/Azure VPC
+# Cost	Uses free monthly GitHub Actions minutes	Uses your own server compute infrastructure
+# 3. Available GitHub-Hosted Runners
+
+# GitHub provides three primary operating systems:
+
+# 1. Ubuntu Linux
+# yaml
+# runs-on: ubuntu-latest
+# Image: Currently points to Ubuntu 24.04 or 22.04 LTS.
+# Pinning Version: runs-on: ubuntu-24.04 or runs-on: ubuntu-22.04.
+# Best For: 90% of DevOps workflows (Docker builds, Spring Boot, Go, Node.js, Python, Kubernetes pipelines). Fastest startup time (~5 seconds) and lowest minute cost.
+# 2. Microsoft Windows
+# yaml
+# runs-on: windows-latest
+# Image: Windows Server 2022 Datacenter.
+# Pinning Version: runs-on: windows-2022.
+# Best For: .NET Framework, Windows desktop apps, PowerShell scripting, MSI installer generation.
+# 3. Apple macOS
+# yaml
+# runs-on: macos-latest
+# Image: macOS 14 (Sonoma) running on Apple Silicon (M1/M2 ARM64).
+# Pinning Version: runs-on: macos-14 or runs-on: macos-13 (Intel x86_64).
+# Best For: iOS, macOS, watchOS, and Safari testing with Xcode. Consumes minutes at a 10x rate compared to Linux.
+# 4. Understanding the Runner Context (runner.*)
+
+# The runner context provides metadata about the runner executing the active job.
+
+# Property	Example Value	Description
+# runner.os	Linux, Windows, macOS	The general operating system family.
+# runner.arch	X64, ARM64, ARM	The hardware processor architecture.
+# runner.name	GitHub Actions 4	The runner instance identifier.
+# runner.environment	github-hosted / self-hosted	Indicates who owns the machine.
+# runner.temp	/home/runner/work/_temp	Path to scratch storage wiped after the job.
+# runner.tool_cache	/opt/hostedtoolcache	Pre-cached runtimes (Java, Python, Node).
+# ${{ runner.os }} vs. $RUNNER_OS: What is the Difference?
+
+# Understanding this difference is a hallmark of Senior DevOps engineers:
+
+# ${{ runner.os }} (GitHub Context Expression):
+
+# Evaluated by the GitHub Actions server engine before the script is sent to the runner.
+# Can be used inside YAML keys, like if: conditionals:
+# yaml
+# if: ${{ runner.os == 'Linux' }}
+
+# $RUNNER_OS (Shell Environment Variable):
+
+# An environment variable exported directly into the runner's operating system environment.
+# Evaluated by the shell (Bash/PowerShell) when the command runs.
+# Useful inside shell scripts and loops:
+# bash
+# if [ "$RUNNER_OS" = "Linux" ]; then
+#   sudo apt-get update
+# fi
+# 5. Practical Multi-Runner Patterns
+# Example 1: Different Operating Systems for Different Jobs
+# yaml
+# jobs:
+#   build-linux:
+#     name: Build Linux Binary
+#     runs-on: ubuntu-latest
+#     steps:
+#       - run: echo "Compiling on Linux..."
+#   build-windows:
+#     name: Build Windows EXE
+#     runs-on: windows-latest
+#     steps:
+#       - run: Write-Output "Compiling on Windows..."
+#   build-macos:
+#     name: Build macOS DMG
+#     runs-on: macos-latest
+#     steps:
+#       - run: echo "Compiling with Xcode..."
+# Example 2: Cross-Platform Matrix Testing
+
+# Instead of writing three separate jobs, use a matrix:
+
+# yaml
+# jobs:
+#   cross-platform-test:
+#     name: Test on ${{ matrix.os }}
+#     runs-on: ${{ matrix.os }}
+#     strategy:
+#       matrix:
+#         os:
+#           - ubuntu-latest
+#           - windows-latest
+#           - macos-latest
+#     steps:
+#       - name: Show Current OS
+#         run: echo "Currently testing on ${{ runner.os }} (${{ runner.arch }})"
+
+# GitHub will automatically launch 3 parallel jobs, one for each OS!
+
+# Example 3: Self-Hosted Runners
+
+# When you run pipelines on your own internal servers or AWS EC2 instances:
+
+# yaml
+# jobs:
+#   deploy-internal:
+#     name: Deploy to Private VPC
+#     runs-on: self-hosted
+#     steps:
+#       - run: echo "Running on private on-prem infrastructure!"
+# How Self-Hosted Runners are Configured in GitHub:
+# Go to your repository on GitHub.
+# Navigate to Settings 
+# →
+# → Actions 
+# →
+# → Runners.
+# Click New self-hosted runner.
+# Select the OS (Linux, Windows, macOS) and architecture (x64, ARM64).
+# GitHub gives you a shell script to download the runner package, run ./config.sh --url ... --token ..., and start the daemon ./run.sh.
+# Once registered, jobs with runs-on: self-hosted will automatically route to your private machine.
+

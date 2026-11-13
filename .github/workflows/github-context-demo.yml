@@ -1,6 +1,8 @@
 # ==============================================================================
 # GitHub Actions Workflow: GitHub Actions Contexts Demonstration
 # File Location: .github/workflows/github-context-demo.yml
+# Key concept: A GitHub Actions context provides information about the workflow, repository, runner, jobs, steps, and execution environment. You access its properties using expressions such as ${{ github.repository }}.
+# The toJSON() function in GitHub Actions converts a context object into a JSON-formatted string. It is useful when you want to inspect and understand all available properties of a context.
 # ==============================================================================
 
 # 'name': Display title of the workflow shown in the GitHub Actions tab.
@@ -166,3 +168,61 @@ jobs:
           echo "=== 10. Deployment Verification ==="
           echo "All contexts and cross-job outputs verified successfully!"
 
+
+# A Context is a structured collection of variables and metadata exposed by GitHub Actions. They tell your workflow who triggered it, where it is running, what commit was pushed, and allow steps and jobs to pass data to each other.
+
+# The ${{ <expression> }} Syntax
+# ${{ }} tells GitHub Actions to evaluate an expression and replace it with its value before executing the YAML instruction.
+# Expressions can access context objects, run functions like success(), failure(), always(), and evaluate operators like ==, !=, &&, ||.
+# 3. Comparison of Core Contexts
+# Context	Purpose	Availability / Scope	Example Expression
+# github	Repository, branch, actor, run ID, and event payload	Anywhere in any workflow	${{ github.repository }}
+# runner	Hardware, OS, and paths on the runner VM	Inside any job steps	${{ runner.os }}
+# env	Custom environment variables defined in YAML	In steps, job names, and if: conditions	${{ env.APP_NAME }}
+# job	Current status of the active job	In steps (especially with always())	${{ job.status }}
+# steps	Outputs and results of previously executed steps	In subsequent steps within the same job	${{ steps.build_info.outputs.message }}
+# needs	Results and outputs from upstream dependent jobs	In downstream jobs declaring needs:	${{ needs.build.outputs.build_message }}
+# secrets	Access to encrypted credentials and tokens	In steps and workflow env:	${{ secrets.DOCKER_PASSWORD }}
+# 4. Deep Dive into Data Sharing Between Steps and Jobs
+# A. Sharing Data Between Steps (steps Context):
+
+# In Linux, every step executes in its own subshell. Variables declared via export MY_VAR="abc" are lost when the step finishes.
+
+# To share data with subsequent steps in the same job:
+
+# Write to $GITHUB_OUTPUT:
+# bash
+# echo "version=2.4.1" >> "$GITHUB_OUTPUT"
+# The step must have an id:
+# yaml
+# - name: Set Version
+#   id: version_step
+#   run: echo "version=2.4.1" >> "$GITHUB_OUTPUT"
+# Later steps read it via:
+# yaml
+# run: echo "The version is ${{ steps.version_step.outputs.version }}"
+# B. Sharing Data Between Jobs (needs Context):
+
+# Different jobs run on completely different virtual machines! They do not share memory or hard drives.
+
+# To pass data across jobs:
+
+# The upstream job exports the step output in its outputs: block:
+# yaml
+# jobs:
+#   build:
+#     outputs:
+#       app_version: ${{ steps.version_step.outputs.version }}
+# The downstream job declares needs: build:
+# yaml
+# jobs:
+#   deploy:
+#     needs: build
+#     steps:
+#       - run: echo "Deploying version ${{ needs.build.outputs.app_version }}"
+# 5. Expression Context (${{ env.VAR }}) vs. Shell Variable ($VAR)
+# Feature	${{ env.VAR }}	$VAR
+# Evaluated By	GitHub Actions Expression Engine	Linux Runner Shell (Bash/sh)
+# When Evaluated	Before the shell script is passed to the OS	At runtime during shell execution
+# Usable in YAML Keys?	Yes (e.g., if:, name:, with:)	No (syntax error outside run:)
+# Safety in Scripts	Can lead to script injection if input is untrusted	Safe when properly quoted "$VAR"

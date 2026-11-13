@@ -132,3 +132,75 @@ jobs:
           echo "=== Precedence Step C: Reversion to Job Level ==="
           echo "PRECEDENCE_MSG = $PRECEDENCE_MSG"
 
+
+
+# A. Workflow-Level Scope
+# Where defined: At the very top of your YAML file (outside jobs:).
+# Availability: Inherited automatically by every job and every step in the pipeline.
+# Best used for: Global constants, target cloud regions, application names, baseline logging levels.
+# B. Job-Level Scope
+# Where defined: Directly under a job definition (e.g. jobs.scopes-demo.env).
+# Availability: Accessible to all steps within that specific job. Other jobs in the same workflow cannot see or access these variables.
+# Best used for: Job-specific build flags, test report directory paths, compiler targets.
+# C. Step-Level Scope
+# Where defined: Directly under a step definition (e.g. steps[i].env).
+# Availability: Accessible only within the subshell process of that single step.
+# Best used for: Passing single-use secrets to a script, setting loop counters, or overriding a global variable for just one command.
+# 3. Scope Comparison Matrix
+# ENV Scope	YAML Location	Who Can Access It?	Precedence Priority
+# Workflow Level	Top-level env:	All jobs and all steps	Lowest (Default fallback)
+# Job Level	Inside a job (jobs.<job_id>.env:)	Only steps inside that specific job	Medium (Overrides workflow)
+# Step Level	Inside a step (steps[*].env:)	Only that single step	Highest (Overrides job & workflow)
+# 4. Variable Precedence & Overriding
+
+# When the exact same variable name (e.g. PRECEDENCE_MSG) is declared at multiple levels, GitHub Actions resolves it using innermost-wins precedence:
+
+# Step-Level (Highest)
+# >
+# Job-Level
+# >
+# Workflow-Level (Lowest)
+# Step-Level (Highest)>Job-Level>Workflow-Level (Lowest)
+
+# In our workflow's second job (precedence-demo):
+
+# Step A: Sees PRECEDENCE_MSG = "I am from JOB level (overrode Workflow)" because Job-level overrides Workflow-level.
+# Step B: Declares env: PRECEDENCE_MSG: "I am from STEP level...". It outputs the Step-level message because Step-level has the highest priority.
+# Step C: Has no step-level declaration. The value reverts back to the Job-level value: "I am from JOB level".
+# 5. Accessing Environment Variables: $VAR vs. ${{ env.VAR }}
+
+# There are two primary ways to access environment variables in GitHub Actions:
+
+# 1. In Shell Scripts (run:): Use $VAR
+# bash
+# echo "Current version is: $APP_VERSION"
+# The operating system shell (Bash/PowerShell) evaluates the variable at runtime.
+# This is safe against script injection and is standard practice.
+# 2. In YAML Keys (if:, name:, with:): Use ${{ env.VAR }}
+# yaml
+# - name: Deploy to ${{ env.ENVIRONMENT }}
+#   if: ${{ env.ENVIRONMENT == 'Production' }}
+# Shell variables like $ENVIRONMENT do not exist in YAML keys outside run:.
+# You must use GitHub's expression context syntax ${{ env.ENVIRONMENT }} to evaluate them in YAML conditions or step titles.
+# 6. Security Note: Environment Variables vs. GitHub Secrets
+
+# CAUTION
+
+# Never put passwords, API tokens, or private keys directly into YAML env: blocks! YAML files are checked into Git history and visible to anyone who has access to the repository.
+
+# The Secure DevOps Pattern:
+
+# Store sensitive values in GitHub Actions Secrets (Settings 
+# →
+# → Secrets and variables 
+# →
+# → Actions), and map them securely into step-level environment variables only where needed:
+
+# yaml
+# - name: Authenticate with Database
+#   env:
+#     # Safely bridges the encrypted GitHub secret into a runner environment variable
+#     DB_PASSWORD: ${{ secrets.PROD_DB_PASSWORD }}
+#   run: |
+#     # The password is masked automatically in the logs as ***
+#     ./migrate-database.sh --password "$DB_PASSWORD"

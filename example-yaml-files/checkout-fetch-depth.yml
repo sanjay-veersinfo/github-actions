@@ -86,3 +86,80 @@ jobs:
           echo "Displaying the 5 most recent Git commits (made possible by fetch-depth: 0):"
           git log --oneline -5
 
+
+
+# fetch-depth: 1 vs. fetch-depth: 0
+
+# Behind the scenes, actions/checkout runs Git commands on the runner.
+
+# fetch-depth: 1 (The Default Behavior)
+
+  
+
+  
+# Underlying Git Command: git clone --depth=1 ...
+
+  
+# What it does: Downloads only the single most recent commit at the tip of the branch (a shallow clone).
+
+  
+# Advantages: Blazing fast. If your repository has 20,000 commits over 5 years, downloading 1 commit takes seconds and saves bandwidth.
+
+  
+# Limitations:
+  
+  
+
+  
+# If you run git log, you will only see 1 commit.
+
+  
+# Cannot calculate release changelogs between Git tags.
+
+  
+# Tools like SonarQube (code quality) will fail to attribute blame lines or calculate new code metrics.
+
+  
+# Versioning tools like semantic-release or GitVersion will fail because they cannot see past version tags.
+
+  
+
+  
+# fetch-depth: 0 (Full Git History)
+
+  
+
+  
+# Underlying Git Command: git clone (without --depth limits) and git fetch --unshallow --tags.
+
+  
+# What it does: Downloads the entire commit history, all branches, and all tags.
+
+  
+# Advantages:
+  
+  
+
+  
+# Complete commit history is visible (git log shows every historical commit).
+
+  
+# Automated versioning tools can inspect previous version tags (v1.0.0, v1.1.0) to compute next versions.
+
+  
+# Git diffs can compare against any remote branch (git diff origin/main).
+
+  
+
+  
+# DevOps Performance Note:
+  
+
+  
+
+# TIP
+
+
+  
+
+#   For small to medium repositories (a few hundred commits), fetch-depth: 0 adds negligible overhead (1–2 seconds). For massive enterprise repositories with hundreds of thousands of commits and large binary histories, fetch-depth: 0 can increase clone times significantly. Use fetch-depth: 0 only when tools explicitly require historical commits.

@@ -85,3 +85,140 @@ jobs:
         run: |
           echo "Pull Request checks completed successfully!"
 
+
+
+# What is a Pull Request?
+
+# A Pull Request (PR) is a collaborative proposal where a developer asks project maintainers to review code from a feature branch and merge it into a core branch (such as development or main).
+
+# What is the pull_request Event?
+
+# pull_request is a built-in event listener in GitHub Actions that activates whenever specific lifecycle actions happen on a PR.
+
+# Source Branch (head_ref) vs. Target Branch (base_ref):
+# Source Branch (head_ref): The branch that contains your new commits (e.g., feature/login, bugfix/fix-typo).
+# Target Branch (base_ref): The destination branch you want to merge into (e.g., development, main).
+# 3. Pull Request Activity Types
+
+# When configuring pull_request: types: [...], you decide which specific PR lifecycle events will trigger the pipeline:
+
+# Activity Type	Trigger Condition	Real-World Use Case
+# opened	Fired when a developer clicks "Create pull request".	Runs initial linters, unit tests, and security scans.
+# synchronize	Fired when new commits are pushed to the source branch while the PR is open.	Re-runs automated tests against the newly updated code.
+# reopened	Fired when a closed, unmerged PR is reopened by maintainers.	Validates if changes are still compatible with the target branch.
+# closed	Fired when a PR is merged or closed without merging.	Used for cleanup tasks, deleting staging preview environments.
+# Default Activity Types:
+
+# If you omit the types: key entirely:
+
+# yaml
+# on:
+#   pull_request:
+#     branches:
+#       - development
+
+# GitHub Actions defaults to: [opened, synchronize, reopened].
+
+# 4. Branch Filtering in Pull Requests: The Base Branch Rule
+
+# IMPORTANT
+
+# In pull_request workflows, the branches: filter checks the TARGET (base) branch, NOT the source branch!
+
+# If you write:
+# yaml
+# on:
+#   pull_request:
+#     branches:
+#       - development
+# The workflow triggers when someone opens a PR into development. It does not matter what the source branch is named (feature/a, patch-1, sanjay-dev).
+# Filter Variations:
+# Target Multiple Branches:
+# yaml
+# on:
+#   pull_request:
+#     branches:
+#       - main
+#       - development
+#       - 'release/**'
+# Exclude Specific Target Branches:
+# yaml
+# on:
+#   pull_request:
+#     branches-ignore:
+#       - experimental
+# 5. GitHub Pull Request Context Reference
+
+# When a workflow runs via pull_request, GitHub populates the github context with metadata about the PR:
+
+# Expression	Example Value	Description
+# ${{ github.event.pull_request.number }}	12	The sequential PR number.
+# ${{ github.event.pull_request.title }}	feat: add user login API	The textual title of the PR.
+# ${{ github.head_ref }}	feature/login	The source branch containing the commits.
+# ${{ github.base_ref }}	development	The target branch receiving the merge.
+# ${{ github.event.pull_request.user.login }}	sanjay-veersinfo	The username of the author who opened the PR.
+# ${{ github.event_name }}	pull_request	The event string that triggered the run.
+# ${{ github.repository }}	sanjay/github-actions	Repository in <owner>/<repo> format.
+# 6. Additional Practical Patterns
+# Example 1: Execute Only for PRs Targeting main (Production Release Gate)
+# yaml
+# on:
+#   pull_request:
+#     branches:
+#       - main
+# Example 2: Execute Only When JavaScript Files Change in the PR
+# yaml
+# on:
+#   pull_request:
+#     branches:
+#       - development
+#     paths:
+#       - 'src/**/*.js'
+# Example 3: Job-Level Conditional Based on Target Branch
+# yaml
+# jobs:
+#   development-audit:
+#     if: github.base_ref == 'development'
+#     runs-on: ubuntu-latest
+#     steps:
+#       - run: echo "This job runs only for PRs targeting development"
+# Example 4: Execute When a PR is Successfully Merged
+# yaml
+# on:
+#   pull_request:
+#     types:
+#       - closed
+# jobs:
+#   on-merge:
+#     # merged is true only if the PR was merged (not just closed without merging)
+#     if: github.event.pull_request.merged == true
+#     runs-on: ubuntu-latest
+#     steps:
+#       - run: echo "PR #${{ github.event.pull_request.number }} was successfully merged! Triggering deployment..."
+# 7. Important GitHub Actions Concepts
+# 1. push vs. pull_request:
+# push: Triggers as soon as commits reach any tracked branch. It tests code that is already committed to that branch.
+# pull_request: Triggers on the proposal to merge. Crucially, GitHub creates a temporary synthetic merge commit (refs/pull/:number/merge) combining your feature branch with the latest target branch. actions/checkout checks out this simulated merge to test whether the combined code compiles cleanly!
+# 2. github.ref vs. github.head_ref vs. github.base_ref:
+# Under a pull_request event:
+# github.ref: refs/pull/1/merge (the synthetic merge commit).
+# github.head_ref: feature/my-branch (the source branch).
+# github.base_ref: development (the target branch).
+# 3. Branch Protection & Required Status Checks:
+
+# In production repositories:
+
+# Go to Settings 
+# →
+# → Branches 
+# →
+# → Branch protection rules on development.
+# Enable Require status checks to pass before merging.
+# Check the box for Validate Pull Request Changes.
+# Now, developers cannot merge the PR if tests fail (red X).
+# 4. Security with Forked Pull Requests:
+
+# When an open-source contributor forks your repository and opens a PR:
+
+# GitHub runs pull_request workflows in a restricted security sandbox.
+# Secrets are NOT exposed to workflows triggered from forks, preventing malicious contributors from stealing deployment keys or API tokens by printing secrets in a PR script.

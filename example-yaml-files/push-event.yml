@@ -34,3 +34,7 @@ jobs:
       - name: Workflow Completed
         run: echo "Push Event Workflow executed successfully!"
 
+# Unlike workflow_dispatch (which requires manual clicking in the browser), the push event is fully automatic:
+# Git Hook Trigger: When you run git push origin development, GitHub receives the push payload.
+# Filter Matching: GitHub scans .github/workflows/ and checks the on.push.branches filter. Because the destination is development, it triggers the workflow.
+# Runner Allocation: GitHub spins up a fresh Ubuntu runner, runs steps 1 through 4, and records the logs.

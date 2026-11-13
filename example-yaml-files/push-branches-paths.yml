@@ -200,3 +200,79 @@ jobs:
       - name: Workflow Completed
         run: echo "Push workflow executed successfully!"
 
+
+# A. The branches Filter
+# Purpose: Dictates which Git branch updates will trigger this workflow.
+# Why use development? In Gitflow and trunk-based development, developers continuously push feature and bug-fix commits to development for integration testing. Restricting a pipeline to development prevents unnecessary builds on unrelated branches.
+# What happens when code is pushed to main? GitHub checks the incoming Git reference. Because main is not in the branches list, GitHub ignores the event completely. No runner is provisioned, and no build minutes are consumed.
+# Can we specify multiple branches? Yes. You can list multiple branches as a YAML array:
+# yaml
+# branches:
+#   - development
+#   - staging
+#   - 'release/**' # Pattern matching release branches
+# B. The paths Filter
+# Purpose: Restricts workflow execution based on which files were actually modified in the push.
+# What does 'src/**' mean? It is a globbing pattern:
+# src/: The target folder at the root of the repository.
+# **: A recursive wildcard matching any file, nested subfolder, or deep path inside src/ (e.g., src/index.js, src/components/Header.jsx, src/utils/math/calc.ts).
+# How does GitHub identify changed files? When you run git push, GitHub inspects the Git commit history and computes the diff (git diff-tree) between the commit you pushed and the commit previously at the tip of the branch. If at least one changed file matches the paths pattern, the filter passes.
+# Can we specify multiple file paths? Yes:
+# yaml
+# paths:
+#   - 'src/**'
+#   - 'public/**'
+#   - 'package.json'
+# C. Combined Conditions: How branches and paths Work Together
+
+# GitHub Actions evaluates the filter conditions using formal boolean logic:
+
+# IMPORTANT
+
+# The Golden Rule of GitHub Actions Event Filters:
+
+# Items within the branches list use OR logic (e.g., branch is development OR staging).
+# Items within the paths list use OR logic (e.g., changed file is in src/** OR package.json).
+# The relationship between branches and paths uses AND logic. Both must evaluate to true for the workflow to run.
+# 3. Practical Examples: Behavior Matrix
+# Branch	Changed File	Workflow Status	Reason
+# development	src/App.js	Executes ✅	Branch matches (development) AND file matches (src/**).
+# development	src/components/Header.js	Executes ✅	Branch matches (development) AND nested file matches (src/**).
+# development	README.md	Does not execute ❌	Branch matches, but README.md is outside src/.
+# main	src/App.js	Does not execute ❌	File matches, but branch is main (not development).
+# main	README.md	Does not execute ❌	Neither branch nor path matches.
+# development	package.json	Does not execute ❌	Branch matches, but root config file is outside src/.
+# 4. Path Pattern Rules & Common Globs
+
+# GitHub Actions uses the standard fnmatch glob syntax:
+
+# Pattern	Scope	Example Matches
+# 'src/**'	Entire src folder recursively	src/App.js, src/styles/theme/dark.css
+# '**/*.js'	Any JavaScript file anywhere in the repo	src/App.js, scripts/build.js, test.js
+# '**/*.yml'	Any YAML file anywhere in the repo	.github/workflows/deploy.yml, docker-compose.yml
+# '.github/workflows/**'	Changes to CI/CD pipeline definitions	.github/workflows/push-event.yml
+# 'package.json'	Single exact file match	Only root package.json
+# * (Single Star) vs. ** (Double Star)
+# * (Single wildcard): Matches characters within a single directory level. It does not cross directory boundaries (/).
+# Example: 'src/*' matches src/index.js, but does not match src/components/Button.js.
+# ** (Double wildcard / globstar): Matches characters across multiple directory levels recursively.
+# Example: 'src/**' matches src/index.js and src/components/Button.js and src/a/b/c/d/deep.js.
+# Senior DevOps Pattern: paths-ignore
+
+# If you want a workflow to run on almost everything except documentation or markdown files, use paths-ignore:
+
+# yaml
+# on:
+#   push:
+#     branches:
+#       - development
+#     paths-ignore:
+#       - '**.md'
+#       - 'docs/**'
+#       - '.gitignore'
+
+# (Note: You cannot use both paths and paths-ignore in the same workflow event).
+
+
+
+

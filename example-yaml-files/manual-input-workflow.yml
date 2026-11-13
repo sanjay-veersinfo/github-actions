@@ -80,3 +80,35 @@ jobs:
       - name: Workflow Completed
         run: |
           echo "Manual Input Workflow executed successfully with all inputs processed!"
+
+
+# A specialized trigger event allowing manual execution on demand. Unlike automatic triggers (push, pull_request, schedule), this workflow will only run when a human clicks the button in the UI or invokes it via the CLI/API.
+# For workflow_dispatch workflows to appear in the GitHub Actions tab, the workflow file must exist on the default branch (typically main or master) at least once. Once present on the default branch, you can choose to run it against any branch or tag in the repository.
+
+
+# 6. Senior DevOps Enhancement: Adding Custom Inputs (Optional)
+
+# workflow_dispatch supports custom interactive inputs directly from the GitHub UI (text fields, boolean checkboxes, and dropdowns).
+
+# If you want to pass parameters manually at runtime in the future, you can update the on: section like this:
+
+# yaml
+# on:
+#   workflow_dispatch:
+#     inputs:
+#       target_environment:
+#         description: "Target Deployment Environment"
+#         required: true
+#         default: "staging"
+#         type: choice
+#         options:
+#           - development
+#           - staging
+#           - production
+#       enable_debug:
+#         description: "Enable verbose debug logging"
+#         required: false
+#         type: boolean
+#         default: false
+
+# You can access these inputs anywhere in your steps via ${{ inputs.target_environment }}.

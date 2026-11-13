@@ -67,3 +67,117 @@ jobs:
         run: |
           echo "Workflow executed successfully!"
 
+# What is run?
+
+# run tells the runner to execute native command-line scripts inside the runner's shell. It is identical to opening a terminal on your computer and typing commands.
+
+# How Does GitHub Actions Execute Shell Commands?
+# GitHub Actions copies the contents of run into a temporary shell script file (e.g. /tmp/gh-script.sh).
+# It executes that script using the default shell with the fail-fast flag:
+# Ubuntu / macOS default: bash -e {0} (-e halts the step immediately if any command fails).
+# Windows default: pwsh -command ". '{0}'" (PowerShell Core).
+# Executing Multiple Commands with the Literal Block Scalar (|)
+
+# Using | lets you write clean, multi-line bash scripts without chaining &&:
+
+# yaml
+# - name: Build and Inspect
+#   run: |
+#     echo "Starting build process..."
+#     mkdir -p build/
+#     cp src/*.js build/
+#     ls -la build/
+# Running Different Programming Languages via run:
+
+# Once the runtime/SDK is available on the runner, you invoke your normal build tools directly:
+
+# Node.js: node src/index.js or npm test
+# Java: mvn clean package or ./gradlew test
+# Go: go build ./... or go test -v ./...
+# Python: python main.py or pytest
+# Docker: docker build -t my-app:latest .
+# 3. In-Depth Explanation of uses
+# What is uses?
+
+# uses tells the runner to download and execute a reusable GitHub Action instead of running raw shell commands.
+
+# An action is a modular, packaged piece of code (written in JavaScript/TypeScript or built as a Docker container) that contains an action.yml metadata manifest.
+
+# Anatomy of an Action Reference: actions/checkout@v4
+# text
+#   actions   /   checkout   @   v4
+#   ───────       ────────       ──
+#      │             │            │
+#   Owner         Action/        Version Tag / Ref
+#   (Org / User)  Repo Name     (Release tag, branch, or SHA)
+# actions: The GitHub organization maintaining the action (official GitHub-built actions live under the actions org).
+# checkout: The Git repository containing the action.
+# @v4: The version constraint. This points to Git tag v4.
+# Senior DevOps Tip: In high-security enterprise environments, you can pin actions to an immutable Git commit SHA: uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+# What Does actions/setup-node@v4 Do?
+
+# Manually downloading Node.js, extracting tarballs, verifying checksums, configuring PATH, and managing cache keys in raw bash would require 50+ lines of fragile shell code. actions/setup-node does all of that automatically in a single clean step.
+
+# Passing Inputs Using with:
+
+# When an action defines configurable parameters in its action.yml, you pass them using the with: mapping:
+
+# yaml
+# - name: Setup Java
+#   uses: actions/setup-java@v4
+#   with:
+#     distribution: 'temurin'
+#     java-version: '17'
+# 4. Comparing run vs. uses
+# Dimension	run	uses
+# Primary Purpose	Executes custom shell commands.	Executes reusable, pre-built actions.
+# Execution Engine	System shell (Bash, PowerShell, Cmd).	Action runner runtime (Node.js or Docker).
+# Configuration	Command flags and arguments (mvn -DskipTests).	Structured YAML key-value inputs via with:.
+# Code Ownership	Your project's own custom commands.	Reusable modules from GitHub Marketplace or internal repos.
+# Typical Use Cases	npm test, go build, git diff, docker run.	Checkout code, setup SDKs, login to Docker, deploy to AWS/SSH.
+# Why Both Work Together in Production CI/CD
+
+# A professional pipeline never uses only one. They form a natural two-step rhythm:
+
+# uses prepares the environment: It checks out the code, provisions language runtimes (Java/Go/Node), logs into container registries, and configures cloud credentials.
+# run executes your project: It compiles your exact source code, runs your tests, and executes your deployment scripts.
+# 5. Technology Stack Examples
+# 1. Java / Spring Boot Pipeline
+# yaml
+# - name: Checkout Code
+#   uses: actions/checkout@v4
+# - name: Setup Java Runtime (uses)
+#   uses: actions/setup-java@v4
+#   with:
+#     distribution: 'temurin'
+#     java-version: '17'
+#     cache: 'maven'
+# - name: Build Spring Boot Application (run)
+#   run: |
+#     mvn clean package -DskipTests
+# 2. Go Microservice Pipeline
+# yaml
+# - name: Checkout Code
+#   uses: actions/checkout@v4
+# - name: Setup Go Runtime (uses)
+#   uses: actions/setup-go@v5
+#   with:
+#     go-version: '1.23'
+#     cache: true
+# - name: Build and Test Go Application (run)
+#   run: |
+#     go test -v ./...
+#     go build -o api-gateway ./cmd/server
+# 3. React Frontend Pipeline
+# yaml
+# - name: Checkout Code
+#   uses: actions/checkout@v4
+# - name: Setup Node.js (uses)
+#   uses: actions/setup-node@v4
+#   with:
+#     node-version: '22'
+#     cache: 'npm'
+# - name: Install Dependencies & Build Bundle (run)
+#   run: |
+#     npm ci
+#     npm run build
