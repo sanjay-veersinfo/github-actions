@@ -1,0 +1,81 @@
+# ==============================================================================
+# GitHub Actions Workflow: Manual Input Workflow (workflow_dispatch with inputs)
+# File Location: .github/workflows/manual-input-workflow.yml
+# ==============================================================================
+
+# 'name': The display title of the workflow shown in the GitHub Actions tab.
+name: Manual Input Workflow
+
+# 'on': Specifies the event that triggers this workflow.
+on:
+  # 'workflow_dispatch': Allows manual execution from the GitHub Actions web UI,
+  # the GitHub CLI ('gh workflow run'), or the GitHub REST API.
+  workflow_dispatch:
+    # 'inputs': Defines the interactive form fields presented to the user when
+    # clicking the 'Run workflow' button in GitHub.
+    inputs:
+      # Input 1: Accept username as a text string
+      username:
+        description: 'Enter your username'
+        required: true
+        type: string
+        default: 'Developer'
+
+      # Input 2: Select deployment environment from a predefined dropdown list
+      environment:
+        description: 'Select the environment'
+        required: true
+        type: choice
+        options:
+          - development
+          - staging
+          - production
+        default: 'development'
+
+      # Input 3: Enable or disable debug mode via a boolean checkbox
+      debug_mode:
+        description: 'Enable debug mode?'
+        required: true
+        type: boolean
+        default: false
+
+# 'jobs': Groups together the tasks executed when the workflow runs.
+jobs:
+  # Job identifier
+  display-inputs:
+    # Human-friendly label for this job shown in the GitHub UI
+    name: Display Submitted Workflow Inputs
+
+    # GitHub-hosted virtual runner environment
+    runs-on: ubuntu-latest
+
+    # Linear sequence of steps executed inside the runner
+    steps:
+      # Step 1: Display the submitted username
+      # '${{ inputs.username }}': Resolves to the text entered by the user.
+      - name: Display Username
+        run: echo "Username: ${{ inputs.username }}"
+
+      # Step 2: Display the selected environment from the dropdown
+      # '${{ inputs.environment }}': Resolves to the selected choice option.
+      - name: Display Environment
+        run: echo "Environment: ${{ inputs.environment }}"
+
+      # Step 3: Display debug mode status
+      # '${{ inputs.debug_mode }}': Resolves to 'true' or 'false'.
+      - name: Display Debug Mode
+        run: echo "Debug Mode: ${{ inputs.debug_mode }}"
+
+      # Step 4: Conditional step demonstrating real-world usage of the boolean input
+      - name: Execute Debug Diagnostics (Conditional)
+        if: ${{ inputs.debug_mode == true }}
+        run: |
+          echo "=== Debug Mode is ENABLED ==="
+          echo "Runner OS: $RUNNER_OS"
+          echo "Runner Architecture: $RUNNER_ARCH"
+          echo "Workflow Run ID: $GITHUB_RUN_ID"
+
+      # Step 5: Summary completion message
+      - name: Workflow Completed
+        run: echo "Manual Input Workflow executed successfully with all inputs processed!"
+
