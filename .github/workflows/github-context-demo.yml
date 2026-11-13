@@ -1,0 +1,168 @@
+# ==============================================================================
+# GitHub Actions Workflow: GitHub Actions Contexts Demonstration
+# File Location: .github/workflows/github-context-demo.yml
+# ==============================================================================
+
+# 'name': Display title of the workflow shown in the GitHub Actions tab.
+name: GitHub Actions Context Demo
+
+# 'on': Specifies the event that triggers this workflow.
+on:
+  # 'workflow_dispatch': Enables manual triggering from the GitHub Actions tab via 'Run workflow'.
+  workflow_dispatch:
+
+# 'env': Workflow-level environment variables accessible through the 'env' context.
+env:
+  APP_NAME: "SGC Application"
+  APP_VERSION: "1.0.0"
+
+# 'jobs': Groups together the tasks executed when the workflow runs.
+jobs:
+
+  # ----------------------------------------------------------------------------
+  # JOB 1: BUILD & CONTEXT INSPECTION JOB
+  # Demonstrates github, runner, env, job, and steps contexts.
+  # Produces a job output to be consumed by the downstream 'deploy' job.
+  # ----------------------------------------------------------------------------
+  build:
+    name: Build & Inspect Contexts
+    runs-on: ubuntu-latest
+
+    # 'outputs': Maps step outputs to job-level outputs so downstream jobs (via 'needs') can read them!
+    outputs:
+      build_message: ${{ steps.build_info.outputs.message }}
+      build_status: ${{ steps.build_info.outputs.status }}
+
+    steps:
+      # ========================================================================
+      # STEP 1: DEMONSTRATE THE 'github' CONTEXT
+      # The 'github' context contains metadata about the workflow run, the commit,
+      # the branch/tag ref, the trigger event, and the repository itself.
+      # ========================================================================
+      - name: Display github Context Information
+        run: |
+          echo "=== 1. 'github' Context Information ==="
+          echo "Repository Name:      ${{ github.repository }}"
+          echo "Repository Owner:     ${{ github.repository_owner }}"
+          echo "Workflow Name:        ${{ github.workflow }}"
+          echo "Workflow Run ID:      ${{ github.run_id }}"
+          echo "Workflow Run Number:  ${{ github.run_number }}"
+          echo "Actor (Triggered by): ${{ github.actor }}"
+          echo "Event Name:           ${{ github.event_name }}"
+          echo "Git Reference (ref):  ${{ github.ref }}"
+          echo "Commit SHA:           ${{ github.sha }}"
+
+      # ========================================================================
+      # STEP 2: DEMONSTRATE THE 'runner' CONTEXT
+      # The 'runner' context contains metadata about the physical or virtual machine
+      # that GitHub allocated to execute this job.
+      # ========================================================================
+      - name: Display runner Context Information
+        run: |
+          echo "=== 2. 'runner' Context Information ==="
+          echo "Runner OS:            ${{ runner.os }}"
+          echo "Runner Architecture:  ${{ runner.arch }}"
+          echo "Runner Name:          ${{ runner.name }}"
+          echo "Runner Temp Dir:      ${{ runner.temp }}"
+          echo "Runner Tool Cache:    ${{ runner.tool_cache }}"
+
+      # ========================================================================
+      # STEP 3: DEMONSTRATE THE 'env' CONTEXT
+      # Compares GitHub expression evaluation (${{ env.VAR }}) with shell evaluation ($VAR).
+      # Expression syntax is evaluated by GitHub before script execution.
+      # Shell syntax is evaluated by the Linux bash shell at runtime.
+      # ========================================================================
+      - name: Display env Context Information
+        run: |
+          echo "=== 3. 'env' Context Information ==="
+          echo "Via Expression syntax (\${{ env.APP_NAME }}):    ${{ env.APP_NAME }}"
+          echo "Via Expression syntax (\${{ env.APP_VERSION }}): ${{ env.APP_VERSION }}"
+          echo "Via Linux Shell syntax (\$APP_NAME):             $APP_NAME"
+          echo "Via Linux Shell syntax (\$APP_VERSION):          $APP_VERSION"
+
+      # ========================================================================
+      # STEP 4: GENERATE STEP OUTPUT FOR 'steps' CONTEXT DEMONSTRATION
+      # 'id': Gives this step a unique identifier so other steps can reference its outputs.
+      # '$GITHUB_OUTPUT': A special file path provided by GitHub where steps write key=value pairs.
+      # ========================================================================
+      - name: Generate Output Data
+        id: build_info
+        run: |
+          echo "=== 4. Generating Step Outputs ==="
+          echo "Writing outputs to \$GITHUB_OUTPUT..."
+          echo "message=Hello from Build Step Output" >> "$GITHUB_OUTPUT"
+          echo "status=CompiledSuccessfully" >> "$GITHUB_OUTPUT"
+
+      # ========================================================================
+      # STEP 5: DEMONSTRATE THE 'steps' CONTEXT
+      # Accesses the output generated by the previous step via:
+      # ${{ steps.<step_id>.outputs.<output_key> }}
+      # ========================================================================
+      - name: Display steps Context Information
+        run: |
+          echo "=== 5. 'steps' Context Information ==="
+          echo "Output Message: ${{ steps.build_info.outputs.message }}"
+          echo "Output Status:  ${{ steps.build_info.outputs.status }}"
+
+      # ========================================================================
+      # STEP 6: DEMONSTRATE 'if' CONDITIONS WITH CONTEXTS
+      # Evaluates boolean conditions using context expressions to control execution.
+      # ========================================================================
+      - name: Conditional Execution on Main Branch
+        if: ${{ github.ref == 'refs/heads/main' }}
+        run: |
+          echo "=== 6. Conditional Step Executed ==="
+          echo "This step executed because github.ref matches 'refs/heads/main'!"
+
+      # ========================================================================
+      # STEP 7: DEMONSTRATE THE 'job' CONTEXT & STATUS CHECK
+      # The 'job' context contains information about the current job.
+      # 'job.status' returns 'success', 'failure', or 'cancelled'.
+      # ========================================================================
+      - name: Display job Context Information
+        if: ${{ always() }}
+        run: |
+          echo "=== 7. 'job' Context Information ==="
+          echo "Current Job Status: ${{ job.status }}"
+
+      # ========================================================================
+      # STEP 8: SAFE DEMONSTRATION OF THE 'secrets' CONTEXT
+      # Demonstrates how secrets are safely bound to environment variables.
+      # NEVER print secret values in logs! They will be masked as '***'.
+      # ========================================================================
+      - name: Demonstrate Safe secrets Context Usage
+        env:
+          # Demonstrates syntax: SECRETS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SAMPLE_SECRET_REF: "${{ secrets.GITHUB_TOKEN }}"
+        run: |
+          echo "=== 8. 'secrets' Context Demonstration ==="
+          echo "Secrets are referenced via: \${{ secrets.SECRET_NAME }}"
+          echo "Notice: Real secrets injected into env are automatically masked by GitHub as: $SAMPLE_SECRET_REF"
+
+  # ----------------------------------------------------------------------------
+  # JOB 2: DEPLOY JOB DEMONSTRATING THE 'needs' CONTEXT
+  # 'needs: build': Tells GitHub that this job depends on the 'build' job completing.
+  # The 'needs' context gives access to the result ('success'/'failure') and
+  # job-level outputs produced by the upstream job.
+  # ----------------------------------------------------------------------------
+  deploy:
+    name: Deploy & Inspect needs Context
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+      # STEP A: Access upstream job results and outputs via 'needs' context
+      - name: Display needs Context Information
+        run: |
+          echo "=== 9. 'needs' Context Information in Downstream Job ==="
+          echo "Upstream Job Result (build):   ${{ needs.build.result }}"
+          echo "Upstream Job Output (message): ${{ needs.build.outputs.build_message }}"
+          echo "Upstream Job Output (status):  ${{ needs.build.outputs.build_status }}"
+
+      # STEP B: Final verification step
+      - name: Deployment Verification
+        if: ${{ needs.build.result == 'success' }}
+        run: |
+          echo "=== 10. Deployment Verification ==="
+          echo "All contexts and cross-job outputs verified successfully!"
+
