@@ -1,0 +1,133 @@
+# ==============================================================================
+# GitHub Actions Workflow: Environment Variable Scopes & Precedence Demo
+# File Location: .github/workflows/environment-variable-scopes.yml
+# ==============================================================================
+
+# 'name': The display title of the workflow shown in the GitHub Actions tab.
+name: GitHub Actions ENV Scopes Demo
+
+# 'on': Specifies the event that triggers this workflow.
+on:
+  # 'workflow_dispatch': Allows manual execution from the GitHub Actions web UI via 'Run workflow'.
+  workflow_dispatch:
+
+# ==============================================================================
+# 1. WORKFLOW-LEVEL ENVIRONMENT VARIABLES
+# Defined at the root level of the YAML file, outside of the 'jobs' block.
+# Scope & Availability: Accessible to EVERY job and EVERY step across the entire workflow.
+# Use case: Global settings, application metadata, common flags, deployment regions.
+# ==============================================================================
+env:
+  APP_NAME: "SGC Application"
+  ENVIRONMENT: "Development"
+  APP_VERSION: "1.0.0"
+  PRECEDENCE_MSG: "I am from WORKFLOW level"
+
+# 'jobs': Groups together the tasks executed when the workflow runs.
+jobs:
+
+  # ----------------------------------------------------------------------------
+  # JOB 1: DEMONSTRATING SCOPE INHERITANCE AND ISOLATION
+  # ----------------------------------------------------------------------------
+  scopes-demo:
+    name: Demonstrate Workflow, Job, and Step Scopes
+    runs-on: ubuntu-latest
+
+    # ==========================================================================
+    # 2. JOB-LEVEL ENVIRONMENT VARIABLES
+    # Defined inside a specific job, outside of the 'steps' block.
+    # Scope & Availability: Accessible to ALL steps inside this 'scopes-demo' job only.
+    # Other jobs (like 'precedence-demo') cannot access these variables!
+    # Use case: Job-specific targets, build modes, test runner flags, artifact names.
+    # ==========================================================================
+    env:
+      JOB_NAME: "Build and Validation Job"
+      BUILD_MODE: "Production"
+
+    steps:
+      # Step 1: Display Workflow-Level Variables
+      # Using '|' literal block scalar avoids any YAML plain scalar colon (: ) conflicts.
+      - name: Display Workflow-Level Variables
+        run: |
+          echo "=== Step 1: Workflow-Level Variables ==="
+          echo "Application Name: $APP_NAME"
+          echo "Environment:      $ENVIRONMENT"
+          echo "Version:          $APP_VERSION"
+
+      # Step 2: Display Job-Level Variables (and verify access to workflow-level variables)
+      - name: Display Job-Level Variables
+        run: |
+          echo "=== Step 2: Job-Level Variables ==="
+          echo "Job Name:         $JOB_NAME"
+          echo "Build Mode:       $BUILD_MODE"
+          echo "Accessing Workflow-Level APP_NAME from Job step: $APP_NAME"
+
+      # Step 3: Define and Display Step-Level Variables
+      # ========================================================================
+      # 3. STEP-LEVEL ENVIRONMENT VARIABLES
+      # Defined directly under a specific step.
+      # Scope & Availability: Accessible ONLY inside this single step.
+      # Use case: Ephemeral secrets, one-time flags, step-specific loop counters.
+      # ========================================================================
+      - name: Define and Display Step-Level Variables
+        env:
+          STEP_MESSAGE: "Hello from Step Level!"
+          STEP_NUMBER: "3"
+        run: |
+          echo "=== Step 3: Step-Level Variables ==="
+          echo "Step Message:     $STEP_MESSAGE"
+          echo "Step Number:      $STEP_NUMBER"
+          echo "Accessing Job-level JOB_NAME:        $JOB_NAME"
+          echo "Accessing Workflow-level APP_NAME:   $APP_NAME"
+
+      # Step 4: Demonstrate Step-Level Isolation
+      # Proves that STEP_MESSAGE defined in Step 3 does NOT bleed into Step 4.
+      - name: Demonstrate Step-Level Scope Isolation
+        run: |
+          echo "=== Step 4: Step-Level Scope Isolation Check ==="
+          if [ -z "$STEP_MESSAGE" ]; then
+            echo "CONFIRMED: 'STEP_MESSAGE' is completely EMPTY and UNSET in this step!"
+            echo "Reason: Step-level variables are strictly isolated to their own step."
+          else
+            echo "Unexpected: STEP_MESSAGE leaked into this step: $STEP_MESSAGE"
+          fi
+          echo "Notice: Workflow ($APP_NAME) and Job ($JOB_NAME) variables remain accessible!"
+
+      # Step 5: Completion of Scope Demonstration
+      - name: Workflow Completed Message
+        run: |
+          echo "Environment variable scope demonstration completed successfully!"
+
+  # ----------------------------------------------------------------------------
+  # JOB 2: DEMONSTRATING VARIABLE PRECEDENCE / OVERRIDING
+  # Shows what happens when the exact same variable name exists at multiple levels.
+  # Precedence Rule: Step-Level > Job-Level > Workflow-Level
+  # ----------------------------------------------------------------------------
+  precedence-demo:
+    name: Demonstrate Variable Overriding & Precedence
+    runs-on: ubuntu-latest
+
+    # Job-level variable overrides the workflow-level variable with the same name!
+    env:
+      PRECEDENCE_MSG: "I am from JOB level (overrode Workflow)"
+
+    steps:
+      # Step A: Displays Job-level value (which overrode Workflow-level value)
+      - name: Display Job-Level Precedence
+        run: |
+          echo "=== Precedence Step A: Job Level ==="
+          echo "PRECEDENCE_MSG = $PRECEDENCE_MSG"
+
+      # Step B: Step-level variable overrides Job-level value for this step only!
+      - name: Display Step-Level Override
+        env:
+          PRECEDENCE_MSG: "I am from STEP level (overrode Job and Workflow)"
+        run: |
+          echo "=== Precedence Step B: Step Level Override ==="
+          echo "PRECEDENCE_MSG = $PRECEDENCE_MSG"
+
+      # Step C: Proves that after Step B finishes, the value reverts back to Job level!
+      - name: Verify Reversion to Job Level
+        run: |
+          echo "=== Precedence Step C: Reversion to Job Level ==="
+          echo "PRECEDENCE_MSG = $PRECEDENCE_MSG"
