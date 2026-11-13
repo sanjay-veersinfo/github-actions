@@ -1,0 +1,10 @@
+{
+  "name": "github-actions-node-ci",
+  "version": "1.0.0",
+  "description": "Simple Node.js project demonstrating GitHub Actions CI",
+  "main": "sample/math.js",
+  "scripts": {
+    "test": "node --test sample/*.test.js"
+  }
+}
+

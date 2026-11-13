@@ -1,0 +1,92 @@
+# ==============================================================================
+# GitHub Actions Workflow: Node.js Continuous Integration (CI) Pipeline
+# File Location: .github/workflows/node-ci.yml
+# ==============================================================================
+
+# 'name': The display title of the workflow shown in the GitHub Actions tab.
+name: Node.js CI Pipeline
+
+# 'on': Specifies the trigger events that automatically start the CI pipeline.
+on:
+  # Trigger 1: Automatically executes whenever code is pushed to 'main' or 'development'.
+  push:
+    branches:
+      - main
+      - development
+
+  # Trigger 2: Automatically executes whenever a Pull Request targets 'main' or 'development'.
+  pull_request:
+    branches:
+      - main
+      - development
+
+  # Trigger 3: Allows manual execution from the GitHub Actions web UI via 'Run workflow'.
+  workflow_dispatch:
+
+# 'jobs': Groups together the tasks executed when the workflow runs.
+jobs:
+
+  # 'build-and-test': The primary CI job responsible for environment setup, install, and tests.
+  build-and-test:
+    # 'name': Human-readable job title displayed in the GitHub Actions dashboard.
+    name: Build, Install & Automated Unit Tests
+
+    # 'runs-on': Specifies the hosted runner virtual machine.
+    # 'ubuntu-latest' allocates a fresh, ephemeral Ubuntu Linux environment.
+    runs-on: ubuntu-latest
+
+    # 'steps': A linear sequence of individual tasks executed in exact top-to-bottom order.
+    steps:
+      # ========================================================================
+      # STEP 1: DOWNLOAD SOURCE CODE
+      # 'actions/checkout@v4': Clones the repository into the runner's workspace.
+      # ========================================================================
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      # ========================================================================
+      # STEP 2: CONFIGURE NODE.JS RUNTIME ENVIRONMENT
+      # 'actions/setup-node@v4': Configures Node.js 22 on the runner.
+      # 'with': Passes configuration parameters into the action.
+      # 'cache: npm': Automatically caches ~/.npm directory based on package-lock.json,
+      # dramatically speeding up subsequent CI pipeline runs.
+      # ========================================================================
+      - name: Setup Node.js Runtime
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      # ========================================================================
+      # STEP 3: DISPLAY INSTALLED RUNTIME VERSIONS
+      # Confirms that the runner is operating on the exact Node.js and npm versions.
+      # ========================================================================
+      - name: Display Node.js and npm Versions
+        run: |
+          echo "=== Node.js Runtime Environment ==="
+          node --version
+          npm --version
+
+      # ========================================================================
+      # STEP 4: INSTALL DEPENDENCIES USING LOCKFILE
+      # 'npm ci' (Clean Install) installs exact dependencies directly from package-lock.json.
+      # Why 'npm ci' instead of 'npm install':
+      # - 'npm ci' NEVER modifies package-lock.json or package.json.
+      # - 'npm ci' ensures 100% deterministic, reproducible builds across developers and CI.
+      # - 'npm ci' fails immediately if package.json and package-lock.json are out of sync.
+      # ========================================================================
+      - name: Install Dependencies (npm ci)
+        run: |
+          npm ci
+
+      # ========================================================================
+      # STEP 5: EXECUTE AUTOMATED UNIT TESTS
+      # Runs the 'npm test' script defined in package.json ('node --test sample/*.test.js').
+      # If any test assertion fails, Node exits with code 1, immediately halting the pipeline
+      # and alerting the team with a red build failure status.
+      # ========================================================================
+      - name: Run Unit Tests
+        run: |
+          echo "=== Executing Automated Unit Tests ==="
+          npm test
+
