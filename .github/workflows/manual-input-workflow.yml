@@ -52,19 +52,20 @@ jobs:
     # Linear sequence of steps executed inside the runner
     steps:
       # Step 1: Display the submitted username
-      # '${{ inputs.username }}': Resolves to the text entered by the user.
+      # Using '|' literal block scalar avoids any YAML plain scalar colon (: ) conflicts.
       - name: Display Username
-        run: echo "Username: ${{ inputs.username }}"
+        run: |
+          echo "Username: ${{ inputs.username }}"
 
       # Step 2: Display the selected environment from the dropdown
-      # '${{ inputs.environment }}': Resolves to the selected choice option.
       - name: Display Environment
-        run: echo "Environment: ${{ inputs.environment }}"
+        run: |
+          echo "Environment: ${{ inputs.environment }}"
 
       # Step 3: Display debug mode status
-      # '${{ inputs.debug_mode }}': Resolves to 'true' or 'false'.
       - name: Display Debug Mode
-        run: echo "Debug Mode: ${{ inputs.debug_mode }}"
+        run: |
+          echo "Debug Mode: ${{ inputs.debug_mode }}"
 
       # Step 4: Conditional step demonstrating real-world usage of the boolean input
       - name: Execute Debug Diagnostics (Conditional)
@@ -77,5 +78,5 @@ jobs:
 
       # Step 5: Summary completion message
       - name: Workflow Completed
-        run: echo "Manual Input Workflow executed successfully with all inputs processed!"
-
+        run: |
+          echo "Manual Input Workflow executed successfully with all inputs processed!"
