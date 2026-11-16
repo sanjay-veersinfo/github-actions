@@ -1,0 +1,423 @@
+# ==============================================================================
+# GitHub Actions Workflow: Job-Level 'if' Conditionals Demonstration
+# File Location: .github/workflows/job-if-conditions.yml
+# ==============================================================================
+
+# 'name': Display title of the workflow shown in the GitHub Actions tab.
+name: Job If Conditions Example
+
+# 'on': Specifies the events that trigger this workflow.
+on:
+  # Trigger 1: Automatic trigger on pushes to 'main' or 'development'.
+  push:
+    branches:
+      - main
+      - development
+
+  # Trigger 2: Manual trigger with an interactive environment input.
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Select deployment environment"
+        required: true
+        type: choice
+        options:
+          - development
+          - production
+        default: development
+
+# 'env': Workflow-level environment variables.
+env:
+  APP_NAME: sample-app
+
+# 'jobs': Groups together all the jobs evaluated by this workflow.
+# KEY CONCEPT: Job-level 'if' conditions are evaluated BEFORE a runner is allocated!
+# If a condition evaluates to false, GitHub skips the job, consuming 0 billable minutes.
+jobs:
+
+  # ============================================================================
+  # 1. NORMAL CONDITION
+  # Has no 'if' condition, so it ALWAYS executes whenever the workflow triggers.
+  # ============================================================================
+  normal-condition:
+    name: Normal Condition (Always Runs)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Display Message
+        run: |
+          echo "Normal condition executed: This job runs unconditionally."
+
+  # ============================================================================
+  # 2. MAIN BRANCH CONDITION
+  # Evaluates equality comparison operator (==) with the full git reference.
+  # ============================================================================
+  main-branch-condition:
+    name: Main Branch Condition
+    runs-on: ubuntu-latest
+
+    # True only when commits are pushed directly to the main branch
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Display Message
+        run: |
+          echo "This job runs only on the main branch (github.ref == 'refs/heads/main')."
+
+  # ============================================================================
+  # 3. DEVELOPMENT BRANCH CONDITION
+  # Evaluates equality comparison operator (==) for the development branch.
+  # ============================================================================
+  development-branch-condition:
+    name: Development Branch Condition
+    runs-on: ubuntu-latest
+
+    # True only when commits are pushed directly to the development branch
+    if: github.ref == 'refs/heads/development'
+
+    steps:
+      - name: Display Message
+        run: |
+          echo "This job runs only on the development branch."
+
+  # ============================================================================
+  # 4. PUSH EVENT CONDITION
+  # Uses github.event_name to differentiate automated git pushes from manual triggers.
+  # ============================================================================
+  push-event-condition:
+    name: Push Event Condition
+    runs-on: ubuntu-latest
+
+    # True when triggered by git push, false when triggered by workflow_dispatch
+    if: github.event_name == 'push'
+
+    steps:
+      - name: Display Message
+        run: |
+          echo "Workflow triggered by automated push event."
+
+  # ============================================================================
+  # 5. MANUAL EVENT CONDITION
+  # True only when the developer clicks 'Run workflow' in the GitHub Actions UI.
+  # ============================================================================
+  manual-event-condition:
+    name: Manual Event Condition
+    runs-on: ubuntu-latest
+
+    # True when triggered manually via workflow_dispatch
+    if: github.event_name == 'workflow_dispatch'
+
+    steps:
+      - name: Display Message
+        run: |
+          echo "Workflow triggered manually via workflow_dispatch."
+
+  # ============================================================================
+  # 6. LOGICAL AND (&&) CONDITION
+  # Both left and right conditions must evaluate to true.
+  # ============================================================================
+  and-condition:
+    name: AND Condition (Push AND Main)
+    runs-on: ubuntu-latest
+
+    # Requires both: event is 'push' AND branch is 'main'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Display Message
+        run: |
+          echo "Evaluated: Both push event AND main branch matched."
+
+  # ============================================================================
+  # 7. LOGICAL OR (||) CONDITION
+  # Executes if AT LEAST ONE of the conditions evaluates to true.
+  # ============================================================================
+  or-condition:
+    name: OR Condition (Main OR Development)
+    runs-on: ubuntu-latest
+
+    # True if pushed to main OR pushed to development
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/development'
+
+    steps:
+      - name: Display Message
+        run: |
+          echo "Evaluated: Branch is either main OR development."
+
+  # ============================================================================
+  # 8. LOGICAL NOT (!=) OPERATOR
+  # Inverts equality using the '!=' comparison operator.
+  # Senior Tip: Prefer '!=' over raw '!' in unquoted YAML to avoid YAML tag collisions.
+  # ============================================================================
+  not-condition:
+    name: NOT Condition (Not Push)
+    runs-on: ubuntu-latest
+
+    # True if the event is anything other than 'push' (e.g. manual dispatch)
+    if: github.event_name != 'push'
+
+    steps:
+      - name: Display Message
+        run: |
+          echo "Evaluated: Event is NOT a push event."
+
+  # ============================================================================
+  # 9. CONTAINS() & FROMJSON() FUNCTIONS
+  # fromJSON parses a JSON array string; contains checks if ref_name is inside it.
+  # ============================================================================
+  contains-condition:
+    name: Contains Condition
+    runs-on: ubuntu-latest
+
+    # Checks if short branch name (main or development) exists inside the array
+    if: contains(fromJSON('["main", "development"]'), github.ref_name)
+
+    steps:
+      - name: Display Message
+        run: |
+          echo "Evaluated: Current branch is in the allowed branch list."
+
+  # ============================================================================
+  # 10. STARTSWITH() FUNCTION
+  # Checks whether a string begins with a specific prefix.
+  # ============================================================================
+  startswith-condition:
+    name: StartsWith Condition (Feature Branch)
+    runs-on: ubuntu-latest
+
+    # True if the branch starts with 'feature/' (e.g. feature/login)
+    if: startsWith(github.ref_name, 'feature/')
+
+    steps:
+      - name: Display Message
+        run: |
+          echo "Feature branch detected (starts with 'feature/')."
+
+  # ============================================================================
+  # 11. ENDSWITH() FUNCTION
+  # Checks whether a string terminates with a specific suffix.
+  # ============================================================================
+  endswith-condition:
+    name: EndsWith Condition (Release Suffix)
+    runs-on: ubuntu-latest
+
+    # True if the branch ends with '-release' (e.g. v1.0-release)
+    if: endsWith(github.ref_name, '-release')
+
+    steps:
+      - name: Display Message
+        run: |
+          echo "Release branch detected (ends with '-release')."
+
+  # ============================================================================
+  # 12. BASELINE BUILD JOB FOR STATUS CHECKS
+  # Serves as the upstream dependency for the status-check functions below.
+  # ============================================================================
+  build:
+    name: Build Job
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Build Application
+        run: |
+          echo "Building application: Build completed successfully!"
+
+  # ============================================================================
+  # 13. SUCCESS() STATUS-CHECK FUNCTION
+  # Runs only if all upstream dependencies ('build') completed successfully.
+  # ============================================================================
+  success-condition:
+    name: Success Condition
+    runs-on: ubuntu-latest
+    needs: build
+
+    # Explicitly checks that the 'build' job succeeded
+    if: success()
+
+    steps:
+      - name: Display Message
+        run: |
+          echo "success() condition matched: Upstream build job succeeded."
+
+  # ============================================================================
+  # 14. FAILURE() STATUS-CHECK FUNCTION
+  # Runs ONLY when at least one upstream dependency has failed.
+  # Because 'build' succeeds in this workflow, failure-condition is skipped.
+  # ============================================================================
+  failure-condition:
+    name: Failure Condition
+    runs-on: ubuntu-latest
+    needs: build
+
+    # Only executes if upstream 'build' job failed
+    if: failure()
+
+    steps:
+      - name: Display Message
+        run: |
+          echo "failure() condition matched: A previous dependency failed."
+
+  # ============================================================================
+  # 15. ALWAYS() STATUS-CHECK FUNCTION
+  # Runs REGARDLESS of whether upstream dependencies succeeded or failed.
+  # Critical for: uploading test reports, sending Slack alerts, teardown cleanups.
+  # ============================================================================
+  always-condition:
+    name: Always Condition
+    runs-on: ubuntu-latest
+    needs: build
+
+    # Executes whether 'build' passed, failed, or was skipped
+    if: always()
+
+    steps:
+      - name: Display Message
+        run: |
+          echo "always() condition matched: This job runs unconditionally after build."
+
+  # ============================================================================
+  # 16. CANCELLED() STATUS-CHECK FUNCTION
+  # Runs ONLY if the workflow was cancelled by a user clicking 'Cancel workflow'.
+  # ============================================================================
+  cancelled-condition:
+    name: Cancelled Condition
+    runs-on: ubuntu-latest
+    needs: build
+
+    # Executes only if the workflow run was manually cancelled
+    if: cancelled()
+
+    steps:
+      - name: Display Message
+        run: |
+          echo "cancelled() condition matched: Workflow cancellation cleanup."
+
+  # ============================================================================
+  # 17. CONDITIONAL DEPLOYMENT (MULTIPLE OPERATORS + CONTEXTS)
+  # Combines 'needs', manual event check, and interactive form input.
+  # ============================================================================
+  deploy:
+    name: Conditional Deployment
+    runs-on: ubuntu-latest
+    needs: build
+
+    # Runs only if build succeeded, trigger was manual, AND user selected 'production'
+    if: github.event_name == 'workflow_dispatch' && inputs.environment == 'production'
+
+    steps:
+      - name: Deploy Application
+        run: |
+          echo "Deploying application to PRODUCTION environment!"
+
+
+
+# Core Concepts: How Job-Level if Works
+# Evaluated Before Runner Allocation
+
+# Unlike step-level if conditions (which run inside an active VM), job-level if conditions are evaluated by GitHub's cloud orchestrator before any runner is provisioned.
+
+# If a job condition evaluates to false, no virtual machine is started, saving compute minutes.
+# In the GitHub Actions UI, skipped jobs appear immediately as neutral gray circles with a line through them (⊘).
+# 3. Operators & Functions Breakdown
+# A. Comparison Operators
+# == (Equal): if: github.ref == 'refs/heads/main'
+# != (Not Equal): if: github.event_name != 'push'
+# B. Logical Operators
+# && (AND): Both sides must be true:
+# yaml
+# if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+# || (OR): At least one side must be true:
+# yaml
+# if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/development'
+# ! (NOT): Inverts boolean logic:
+# yaml
+# # Senior Tip: Wrap in ${{ }} when using leading '!' to prevent YAML tag syntax parsing errors
+# if: ${{ !cancelled() }}
+# C. String & Collection Functions
+# contains(search, item): Checks if a string or array contains an element.
+# Example with fromJSON(): contains(fromJSON('["main", "development"]'), github.ref_name) fromJSON() parses a JSON string into an in-memory array so contains() can verify membership.
+# startsWith(searchString, searchValue): Checks prefix: if: startsWith(github.ref_name, 'feature/')
+# endsWith(searchString, searchValue): Checks suffix: if: endsWith(github.ref_name, '-release')
+# 4. The 4 Status-Check Functions & Implicit success() Rule
+
+# When a job declares needs: <job_id>, GitHub Actions evaluates dependency statuses using these 4 functions:
+
+# Status-Check Function	When It Evaluates to true	Typical DevOps Use Case
+# success() (Default)	Every upstream job in needs finished with exit code 0.	Standard compilation and deployment gates.
+# failure()	At least one upstream dependency has failed.	Automated rollback scripts, PagerDuty/incident alerts.
+# always()	Upstream jobs succeeded, failed, or were skipped.	Cleaning up test databases, publishing build logs.
+# cancelled()	The workflow was cancelled by a user clicking "Cancel run".	Terminating lingering background cloud resources.
+
+# IMPORTANT
+
+# The Implicit success() Rule: If you write a custom condition on a job that uses needs without including a status function:
+
+# yaml
+# needs: build
+# if: inputs.environment == 'production'
+
+# GitHub Actions automatically injects an implicit success() check:
+# if: 
+# 𝑠
+# 𝑢
+# 𝑐
+# 𝑐
+# 𝑒
+# 𝑠
+# 𝑠
+# (
+# )
+#  
+# &
+# &
+#  
+# (
+# inputs.environment == ’production’
+# )
+# if: success() && (inputs.environment == ’production’)
+# This ensures that if build fails, your deployment is safely skipped!
+
+# 5. Execution Scenarios: Behavior Matrix
+# Job ID	Push to main	Push to development	Manual Dispatch (development)	Manual Dispatch (production)	If build Fails
+# normal-condition	✅ Runs	✅ Runs	✅ Runs	✅ Runs	✅ Runs
+# main-branch-condition	✅ Runs	⊘ Skipped	⊘ (unless on main)	⊘ (unless on main)	Matches branch
+# development-branch-condition	⊘ Skipped	✅ Runs	⊘ (unless on dev)	⊘ (unless on dev)	Matches branch
+# push-event-condition	✅ Runs	✅ Runs	⊘ Skipped	⊘ Skipped	⊘ Skipped
+# manual-event-condition	⊘ Skipped	⊘ Skipped	✅ Runs	✅ Runs	✅ Runs
+# and-condition	✅ Runs	⊘ Skipped	⊘ Skipped	⊘ Skipped	⊘ Skipped
+# or-condition	✅ Runs	✅ Runs	✅ (if on main/dev)	✅ (if on main/dev)	Matches branch
+# not-condition	⊘ Skipped	⊘ Skipped	✅ Runs	✅ Runs	✅ Runs
+# contains-condition	✅ Runs	✅ Runs	✅ (if on main/dev)	✅ (if on main/dev)	Matches branch
+# startswith-condition	⊘ Skipped	⊘ Skipped	⊘ Skipped	⊘ Skipped	⊘ Skipped
+# endswith-condition	⊘ Skipped	⊘ Skipped	⊘ Skipped	⊘ Skipped	⊘ Skipped
+# build	✅ Runs	✅ Runs	✅ Runs	✅ Runs	❌ Fails
+# success-condition	✅ Runs	✅ Runs	✅ Runs	✅ Runs	⊘ Skipped
+# failure-condition	⊘ Skipped	⊘ Skipped	⊘ Skipped	⊘ Skipped	✅ Runs
+# always-condition	✅ Runs	✅ Runs	✅ Runs	✅ Runs	✅ Runs
+# cancelled-condition	⊘ Skipped	⊘ Skipped	⊘ Skipped	⊘ Skipped	⊘ (Runs only on cancel)
+# deploy	⊘ Skipped	⊘ Skipped	⊘ Skipped	✅ Runs	⊘ Skipped
+# 6. How to Test and Observe
+
+# When you are ready to test:
+
+# Commit and push:
+# bash
+# git add .github/workflows/job-if-conditions.yml
+# git commit -m "feat(ci): add job-level if conditions demo workflow"
+# git push origin main
+# Navigate to your GitHub repository in your browser.
+# Click the Actions tab.
+# Select Job If Conditions Example in the left sidebar.
+# Test 1: Test Push Event Filtering
+# Push a commit to main: observe that push-event-condition, main-branch-condition, and and-condition execute, while manual-event-condition and deploy are skipped.
+# Test 2: Test Manual Dispatch & Dropdown Filtering
+# Click Run workflow 
+# →
+# → select production 
+# →
+# → click Run workflow:
+# manual-event-condition and deploy will execute!
+# push-event-condition and and-condition will be skipped.
+# Test 3: Test Workflow Cancellation (cancelled())
+# Trigger a manual run and immediately click Cancel workflow in the top right.
+# Observe cancelled-condition execute its cleanup step while running jobs are halted.

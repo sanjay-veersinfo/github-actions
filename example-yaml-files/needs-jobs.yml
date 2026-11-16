@@ -1,0 +1,219 @@
+# ==============================================================================
+# GitHub Actions Workflow: Job Dependencies Using the 'needs' Keyword
+# File Location: .github/workflows/needs-jobs.yml
+# ==============================================================================
+
+# 'name': The display title of the workflow shown in the GitHub Actions tab.
+name: Needs Jobs Example
+
+# 'on': Specifies the events that trigger this workflow.
+on:
+  # Trigger 1: Automatically execute when code is pushed to 'main' or 'development'.
+  push:
+    branches:
+      - main
+      - development
+
+  # Trigger 2: Allow manual execution directly from the GitHub Actions web UI.
+  workflow_dispatch:
+
+# 'jobs': Groups together all the jobs defined in this workflow.
+jobs:
+
+  # ============================================================================
+  # 1. BUILD JOB
+  # This job has NO 'needs' dependency, so it starts immediately when the workflow runs.
+  # ============================================================================
+  build:
+    name: Build Application
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Simulate compiling or packaging the application
+      # Using '|' literal block scalar avoids any YAML plain scalar colon (: ) conflicts.
+      - name: Build Step
+        run: |
+          echo "Building the application..."
+
+      # Step 2: Signal successful build completion
+      - name: Build Completed
+        run: |
+          echo "Build completed successfully!"
+
+  # ============================================================================
+  # 2. TEST JOB
+  # 'needs: build': Tells GitHub Actions that this job DEPENDS on the 'build' job.
+  # GitHub will pause this job until 'build' finishes with a status of SUCCESS (exit code 0).
+  # If 'build' fails, 'test' will automatically be SKIPPED!
+  # ============================================================================
+  test:
+    name: Test Application
+    runs-on: ubuntu-latest
+
+    # Job dependency configuration: Wait for 'build' to succeed before starting
+    needs: build
+
+    steps:
+      # Step 1: Simulate running automated unit or integration tests
+      - name: Test Step
+        run: |
+          echo "Running application tests..."
+
+      # Step 2: Signal that all test suites passed
+      - name: Test Completed
+        run: |
+          echo "All tests passed!"
+
+  # ============================================================================
+  # 3. DEPLOY JOB
+  # 'needs: test': Tells GitHub Actions that this job DEPENDS on the 'test' job.
+  # Deployment only begins after all tests have passed.
+  # Creates a reliable sequential pipeline: build -> test -> deploy.
+  # ============================================================================
+  deploy:
+    name: Deploy Application
+    runs-on: ubuntu-latest
+
+    # Job dependency configuration: Wait for 'test' to succeed before starting
+    needs: test
+
+    steps:
+      # Step 1: Simulate deploying the verified application to target servers
+      - name: Deploy Step
+        run: |
+          echo "Deploying the application..."
+
+      # Step 2: Signal successful deployment completion
+      - name: Deployment Completed
+        run: |
+          echo "Application deployed successfully!"
+
+
+
+# What is the needs Keyword?
+
+# In GitHub Actions, all jobs run in parallel by default. While parallelism is great for running independent test suites quickly, real-world deployment pipelines require a strict sequence:
+
+# Build Application
+# ⟶
+# Run Automated Tests
+# ⟶
+# Deploy to Production
+# Build Application⟶Run Automated Tests⟶Deploy to Production
+
+# The needs keyword creates dependencies between jobs, transforming isolated parallel tasks into an ordered, sequential CI/CD pipeline.
+
+# 4. What Happens When a Dependency Job Fails?
+
+# By default, GitHub Actions requires every upstream job in needs to exit with code 0 (Success).
+
+# If build fails: test and deploy are marked as Skipped. No runners are provisioned for them, saving compute minutes.
+# If test fails: deploy is marked as Skipped. Broken code is never deployed to production!
+# 5. Multiple Job Dependencies (needs: [job1, job2])
+
+# A job can depend on multiple upstream jobs simultaneously. You can provide an array of job IDs using bracket syntax:
+
+# yaml
+# jobs:
+#   build-frontend:
+#     runs-on: ubuntu-latest
+#     steps:
+#       - run: echo "Building React frontend..."
+#   build-backend:
+#     runs-on: ubuntu-latest
+#     steps:
+#       - run: echo "Building Spring Boot backend..."
+#   # Deploy waits until BOTH frontend and backend builds complete successfully!
+#   deploy:
+#     runs-on: ubuntu-latest
+#     needs: [build-frontend, build-backend]
+#     steps:
+#       - run: echo "Deploying full-stack application to server..."
+# Visualizing Multiple Dependencies (Fan-In Pattern):
+# text
+#        [build-frontend]         [build-backend]
+#               │                        │
+#               └───────────┬────────────┘
+#                           ▼
+#                        [deploy]
+# Difference Between Single and Multiple Dependencies:
+# needs: build: The downstream job waits for one specific job.
+# needs: [build, test]: The downstream job waits for both jobs to complete with success. If either fails, the downstream job is skipped.
+# 6. Parallel vs. Sequential Jobs: Comparison
+# Feature	Parallel Execution (No needs)	Sequential Execution (With needs)
+# Configuration	Omit the needs keyword	Add needs: <job_id>
+# Execution Start	All jobs start at the exact same time	Downstream job waits for upstream job to succeed
+# Failure Behavior	Other jobs continue running independently	Downstream jobs are automatically skipped
+# Execution Time	Time taken = duration of slowest job	Time taken = sum of all jobs in sequence
+# Use Case	Multi-browser testing, code linting	Build 
+# →
+# → Test 
+# →
+# → Deploy pipelines
+# 7. Critical Concept: needs Controls Execution Order, NOT File Sharing!
+
+# IMPORTANT
+
+# needs only controls WHEN a job starts. It does NOT share files between jobs!
+
+# build compiles your code on Runner VM 1.
+# test runs on a brand-new, clean Runner VM 2.
+# deploy runs on Runner VM 3.
+
+# Files created in the build job do not automatically exist on the test or deploy runners. To pass compiled artifacts (like a .jar or .zip file) across jobs:
+
+# Use actions/upload-artifact@v4 in the build job.
+# Use actions/download-artifact@v4 in the deploy job.
+# 8. Expected Execution Output & Logs
+
+# When triggered from GitHub Actions, the visual graph will render a vertical or connected sequence:
+
+# text
+#     ┌───────────────────────────┐
+#     │   Build Application       │  ✅ Success
+#     └─────────────┬─────────────┘
+#                   │ (needs: build)
+#                   ▼
+#     ┌───────────────────────────┐
+#     │   Test Application        │  ✅ Success
+#     └─────────────┬─────────────┘
+#                   │ (needs: test)
+#                   ▼
+#     ┌───────────────────────────┐
+#     │   Deploy Application      │  ✅ Success
+#     └───────────────────────────┘
+# Job Output Logs:
+# 1. Build Application:
+# text
+# Run echo "Building the application..."
+# Building the application...
+# Run echo "Build completed successfully!"
+# Build completed successfully!
+# 2. Test Application (Waited for Build):
+# text
+# Run echo "Running application tests..."
+# Running application tests...
+# Run echo "All tests passed!"
+# All tests passed!
+# 3. Deploy Application (Waited for Test):
+# text
+# Run echo "Deploying the application..."
+# Deploying the application...
+# Run echo "Application deployed successfully!"
+# Application deployed successfully!
+# 9. How to Test and Execute
+
+# When you are ready to test:
+
+# Commit and push:
+# bash
+# git add .github/workflows/needs-jobs.yml
+# git commit -m "feat(ci): add sequential jobs workflow demonstrating needs keyword"
+# git push origin main
+# Open your GitHub repository in your web browser.
+# Click the Actions tab.
+# Select Needs Jobs Example from the left sidebar.
+# Click Run workflow 
+# →
+# → Run workflow.
+# View the workflow execution graph: you will see Build Application execute first while Test Application and Deploy Application show a waiting state until their upstream dependencies complete!
