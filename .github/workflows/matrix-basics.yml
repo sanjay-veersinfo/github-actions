@@ -1,0 +1,348 @@
+# ==============================================================================
+# GitHub Actions Workflow: Matrix Strategy Basics Demonstration
+# File Location: .github/workflows/matrix-basics.yml
+# ==============================================================================
+
+# 'name': Display title of the workflow shown in the GitHub Actions tab.
+name: Matrix Strategy Basics
+
+# 'on': Specifies the events that trigger this workflow.
+on:
+  # Trigger 1: Automatically execute when code is pushed to 'main' or 'development'.
+  push:
+    branches:
+      - main
+      - development
+
+  # Trigger 2: Automatically execute when a Pull Request targets 'main' or 'development'.
+  pull_request:
+    branches:
+      - main
+      - development
+
+  # Trigger 3: Allow manual workflow execution directly from GitHub Actions web UI.
+  workflow_dispatch:
+
+# 'jobs': Groups together all the matrix demonstration jobs.
+jobs:
+
+  # ============================================================================
+  # 1. BASIC MATRIX JOB (Single Dimension: Multiple Node.js Versions)
+  # Multiplies this job across Node.js versions: 20, 22, and 24.
+  # Total Jobs Generated: 3
+  # ============================================================================
+  node-matrix-test:
+    # Uses matrix variable in job display name for clear visualization in the UI
+    name: Test on Node.js ${{ matrix.node-version }}
+    runs-on: ubuntu-latest
+
+    # 'strategy': Defines the matrix execution behavior and parameter variations.
+    strategy:
+      # 'fail-fast: false': If Node.js 20 fails, continue running Node 22 and 24!
+      # (Default is true, which instantly cancels all other running matrix jobs on first failure).
+      fail-fast: false
+
+      # 'max-parallel: 2': Limits simultaneous execution to a maximum of 2 jobs at a time.
+      max-parallel: 2
+
+      # 'matrix': Defines the variable keys and list of values to iterate through.
+      matrix:
+        node-version: [20, 22]
+
+    # Application is located at repository root (where package.json and sample/ live)
+    defaults:
+      run:
+        working-directory: .
+
+    steps:
+      # Step 1: Download repository source code
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      # Step 2: Configure the specific Node.js version selected by this matrix job
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: npm
+
+      # Step 3: Clean install dependencies using existing lockfile
+      - name: Install Dependencies
+        run: |
+          npm ci
+
+      # Step 4: Execute existing sample application unit tests
+      - name: Run Unit Tests
+        run: |
+          echo "Running test suite on Node.js ${{ matrix.node-version }}..."
+          npm test
+
+  # ============================================================================
+  # 2. MULTI-OPERATING SYSTEM MATRIX (Cross-Platform Testing)
+  # Runs the exact same application across Linux, Windows, and macOS runners!
+  # Total Jobs Generated: 3
+  # ============================================================================
+  multi-os-test:
+    name: Test on OS - ${{ matrix.os }}
+    # Dynamically binds runner OS to the active matrix value
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        # Cross-platform runner environments
+        os: [ubuntu-latest, windows-latest, macos-latest]
+
+    defaults:
+      run:
+        working-directory: .
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install Dependencies
+        run: |
+          npm ci
+
+      - name: Run Tests on ${{ matrix.os }}
+        run: |
+          echo "Executing test suite on operating system: ${{ matrix.os }}"
+          npm test
+
+  # ============================================================================
+  # 3. MULTI-DIMENSIONAL MATRIX (Cartesian Product)
+  # Combines 2 Node.js versions x 2 Operating Systems = 4 Job Combinations!
+  # Combinations: (Node 20, Ubuntu), (Node 20, Windows), (Node 22, Ubuntu), (Node 22, Windows)
+  # ============================================================================
+  multi-dimension-test:
+    name: Node ${{ matrix.node-version }} on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        # First dimension (2 versions)
+        node-version: [20, 22]
+        # Second dimension (2 OS)
+        os: [ubuntu-latest, windows-latest]
+
+    defaults:
+      run:
+        working-directory: .
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - name: Install Dependencies
+        run: |
+          npm ci
+
+      - name: Run Tests
+        run: |
+          echo "Executing tests on Node ${{ matrix.node-version }} running on ${{ matrix.os }}"
+          npm test
+
+  # ============================================================================
+  # 4. MATRIX 'include' DEMONSTRATION
+  # 'include': Adds extra properties to specific combinations, or adds entirely new combinations.
+  # ============================================================================
+  include-example:
+    name: Include Example - Node ${{ matrix.node-version }} (${{ matrix.environment || 'standard' }})
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [20, 22]
+        # 'include' attaches an extra 'environment' property to the Node 22 combination!
+        include:
+          - node-version: 22
+            environment: production
+
+    steps:
+      - name: Display Matrix and Included Values
+        run: |
+          echo "=== Matrix Include Demo ==="
+          echo "Active Node Version: ${{ matrix.node-version }}"
+          echo "Custom Environment:  ${{ matrix.environment || 'default/none' }}"
+
+  # ============================================================================
+  # 5. MATRIX 'exclude' DEMONSTRATION
+  # 'exclude': Removes unwanted or unsupported combinations from the cartesian product.
+  # Original combinations (2 x 2 = 4):
+  #   - Node 20 on Ubuntu
+  #   - Node 20 on Windows (EXCLUDED!)
+  #   - Node 22 on Ubuntu
+  #   - Node 22 on Windows
+  # Total Jobs Generated after exclude: 3
+  # ============================================================================
+  exclude-example:
+    name: Exclude Example - Node ${{ matrix.node-version }} on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      matrix:
+        node-version: [20, 22]
+        os: [ubuntu-latest, windows-latest]
+
+        # Explicitly filter out the (Node 20, Windows) combination
+        exclude:
+          - node-version: 20
+            os: windows-latest
+
+    steps:
+      - name: Display Selected Combination
+        run: |
+          echo "=== Matrix Exclude Demo ==="
+          echo "Executed Valid Combination: Node ${{ matrix.node-version }} on ${{ matrix.os }}"
+
+
+
+# 1. What is a Matrix Strategy in GitHub Actions?
+
+# In continuous integration (CI) workflows, you often need to run the same set of build and test tasks across multiple environments—such as different versions of a programming runtime (e.g., Node.js 20 vs. 22) or different operating systems (e.g., Ubuntu, Windows, macOS).
+
+# Writing a separate job block for every single combination creates massive duplication and is difficult to maintain.
+
+# A Matrix Strategy lets you define variables with multiple values in a single job definition. GitHub Actions automatically generates a Cartesian product (all combinations of those variables) and launches each combination as an independent, parallel job.
+
+# 3. Core Matrix Strategy Concepts Explained
+# A. The strategy and matrix Keys
+
+# Under any job in GitHub Actions, strategy: defines how multiple versions of a job execute. Inside matrix:, you provide key-value pairs where keys are custom variable names (e.g., node-version, os) and values are YAML lists of options (e.g., [20, 22]).
+
+# Inside the job, access the active value using ${{ matrix.<variable-name> }}:
+
+# yaml
+# node-version: ${{ matrix.node-version }}
+# runs-on: ${{ matrix.os }}
+# B. Cartesian Product Calculation
+
+# When you supply multiple matrix keys, GitHub Actions computes their Cartesian Product:
+
+# Total Jobs
+# =
+# Length
+# (
+# Dimension
+# 1
+# )
+# ×
+# Length
+# (
+# Dimension
+# 2
+# )
+# ×
+# ⋯
+# ×
+# Length
+# (
+# Dimension
+# 𝑁
+# )
+# Total Jobs=Length(Dimension
+# 1
+# 	​
+
+# )×Length(Dimension
+# 2
+# 	​
+
+# )×⋯×Length(Dimension
+# N
+# 	​
+
+# )
+
+# In our multi-dimension-test job:
+
+# node-version: [20, 22] (length: 2)
+# os: [ubuntu-latest, windows-latest] (length: 2)
+# Total Generated Jobs: 
+# 2
+# ×
+# 2
+# =
+# 4
+#  jobs
+# 2×2=4 jobs.
+# C. fail-fast: false vs fail-fast: true
+# fail-fast: true (Default): If any matrix job fails, GitHub Actions cancels all other currently running matrix jobs immediately to save runner minutes.
+# fail-fast: false (Recommended for cross-version CI): Prevents cancellation. If Node.js 20 encounters a syntax error, Node.js 22 will continue executing until completion so you get a full test report across all targets.
+# D. max-parallel: <number>
+
+# By default, GitHub Actions runs as many matrix jobs in parallel as your runner quota permits. max-parallel: 2 limits concurrent execution to a maximum of 2 jobs at any given moment, queueing the rest until one finishes. This is useful when running against resource-constrained shared databases or third-party APIs with rate limits.
+
+# E. include vs exclude
+# include:
+# Enriches an existing combination with extra metadata/variables (e.g., attaching environment: production only to Node.js 22).
+# Can also append an entirely new standalone combination that wasn't part of the base Cartesian matrix.
+# exclude:
+# Drops specific combinations that are unsupported (e.g., an older Node version that has known incompatibilities on Windows).
+
+# 4. Matrix Execution Breakdown Tables
+# Example 1: node-matrix-test (Single Dimension)
+# Job Index	Matrix Variable (matrix.node-version)	Target Runner	Executed Command
+# Job 1	20	ubuntu-latest	actions/setup-node@v4 with Node 20 
+# →
+# → npm test
+# Job 2	22	ubuntu-latest	actions/setup-node@v4 with Node 22 
+# →
+# → npm test
+# Example 2: multi-os-test (Cross-Platform)
+# Job Index	Matrix Variable (matrix.os)	Dynamic runs-on	Operating System
+# Job 1	ubuntu-latest	ubuntu-latest	Ubuntu Linux runner
+# Job 2	windows-latest	windows-latest	Windows Server runner
+# Job 3	macos-latest	macos-latest	Apple macOS runner
+# Example 3: multi-dimension-test (Cartesian Product)
+# Job Index	matrix.node-version	matrix.os	Combinations Produced
+# Job 1	20	ubuntu-latest	Node 20 on Linux
+# Job 2	20	windows-latest	Node 20 on Windows
+# Job 3	22	ubuntu-latest	Node 22 on Linux
+# Job 4	22	windows-latest	Node 22 on Windows
+# Example 4: exclude-example
+# Original Combination	Status	Reason
+# Node 20 on Ubuntu	Executed	Included in matrix
+# Node 20 on Windows	Excluded	Filtered by exclude rule
+# Node 22 on Ubuntu	Executed	Included in matrix
+# Node 22 on Windows	Executed	Included in matrix
+# 5. Local Verification & GitHub Actions UI Walkthrough
+# Local Test Run
+
+# The test suite in sample/math.test.js was verified locally against package.json:
+
+# bash
+# npm test
+# # Output:
+# # ▶ add() tests (4 subtests passed)
+# # ▶ multiply() tests (4 subtests passed)
+# # ℹ tests 8 | pass 8 | fail 0 | cancelled 0
+# Triggering in GitHub Actions
+# Commit and push the .github/workflows/matrix-basics.yml file to your remote GitHub repository:
+# bash
+# git add .github/workflows/matrix-basics.yml
+# git commit -m "ci: add matrix strategy basics demo workflow"
+# git push origin main
+# Navigate to your repository on GitHub and click the Actions tab.
+# Select Matrix Strategy Basics from the left-hand workflow list.
+# Click Run workflow 
+# →
+# → choose your branch 
+# →
+# → click the green Run workflow button.
+# In the workflow run summary, notice how GitHub Actions expands each matrix job into individual sub-jobs (e.g., Test on Node.js 20, Test on Node.js 22, etc.), displaying individual logs, timings, and statuses for each target.
+
+
