@@ -90,3 +90,75 @@ jobs:
           echo "This is the third parallel job"
           echo "Job Three execution completed"
 
+
+# How Parallel Execution Works
+# What is a Job in GitHub Actions?
+
+# A job is a collection of steps that execute sequentially on a single runner environment. By default:
+
+# Steps inside a job run sequentially (Step 1 
+# →
+# → Step 2 
+# →
+# → Step 3).
+# Jobs inside a workflow run in parallel unless configured otherwise!
+# How Does GitHub Identify Independent Jobs?
+
+# GitHub Actions inspects the dependency graph of your workflow:
+
+# It scans each job under jobs:.
+# It checks whether the job contains a needs: keyword.
+# If a job has no needs attribute, GitHub determines that it has zero dependencies and immediately assigns it to the next available runner.
+# Because job-one, job-two, and job-three have no needs declarations, GitHub dispatches all three simultaneously.
+# 4. Parallel Jobs vs. Sequential Jobs
+# Feature	Parallel Jobs (Default)	Sequential Jobs (Using needs)
+# Declaration	No needs: keyword declared	Uses needs: <job_id>
+# Execution Order	Run simultaneously at the same time	Wait for upstream jobs to finish successfully
+# Runners Provisioned	Multiple virtual machines concurrently	One virtual machine after another
+# Total Wall-Clock Time	Fastest: Time taken = slowest individual job	Longer: Time taken = sum of all jobs combined
+# Typical Use Case	Running frontend tests, backend tests, and security scans at the same time	Build 
+# →
+# → Test 
+# →
+# → Deploy to Production
+# What Happens When We Use the needs Keyword?
+
+# If we updated job-two to declare needs: job-one:
+
+# yaml
+# job-two:
+#   needs: job-one
+
+# Then job-two would not start immediately. It would stay in a "Queued / Waiting" state until job-one completes with exit code 0. If job-one failed, job-two would be skipped entirely.
+
+# 5. Critical Concept: Runner Environment Isolation
+
+# IMPORTANT
+
+# Files and environment variables are NEVER shared between parallel jobs!
+
+# job-one runs on Virtual Machine A.
+# job-two runs on Virtual Machine B.
+# job-three runs on Virtual Machine C.
+
+# If job-one downloads source code, creates a file, or exports an environment variable, job-two cannot see it. If parallel jobs need to share data, they must use:
+
+# actions/upload-artifact and actions/download-artifact to transfer files.
+# outputs: and the needs context to pass text values.
+# 6. Expected Execution Visualization & Logs
+
+# In the GitHub Actions web interface, the execution graph will visually show three parallel branch nodes under the workflow run:
+
+# text
+#               Parallel Execution
+#                      │
+#          ┌───────────┼───────────┐
+#          ▼           ▼           ▼
+#      [Job One]   [Job Two]  [Job Three]
+#          │           │           │
+#       Step 1      Step 1      Step 1
+#          │           │           │
+#       Step 2      Step 2      Step 2
+#          │           │           │
+#       Success     Success     Success
+
