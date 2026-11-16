@@ -1,0 +1,507 @@
+# ==============================================================================
+# GitHub Actions Workflow: Job Outputs Demonstration
+# File Location: .github/workflows/job-outputs.yml
+# ==============================================================================
+
+# 'name': The display title of the workflow shown in the GitHub Actions tab.
+name: Job Outputs Example
+
+# 'on': Specifies the events that trigger this workflow.
+on:
+  # Trigger 1: Automatically execute when code is pushed to 'main' or 'development'.
+  push:
+    branches:
+      - main
+      - development
+
+  # Trigger 2: Allow manual execution directly from the GitHub Actions web UI.
+  workflow_dispatch:
+
+# 'jobs': Groups together all the jobs defined in this workflow.
+jobs:
+
+  # ============================================================================
+  # 1. GENERATE JOB
+  # Generates dynamic values at runtime, writes them to $GITHUB_OUTPUT,
+  # and exposes them at the job level so downstream jobs can consume them!
+  # ============================================================================
+  generate:
+    name: Generate Job Outputs
+    runs-on: ubuntu-latest
+
+    # 'outputs': Maps internal step outputs to publicly accessible job-level outputs.
+    # Syntax: <output_name>: ${{ steps.<step_id>.outputs.<step_output_name> }}
+    outputs:
+      app_name: ${{ steps.app.outputs.name }}
+      app_version: ${{ steps.app.outputs.version }}
+      environment: ${{ steps.app.outputs.environment }}
+
+    steps:
+      # Step 1: Generate dynamic metadata and append to $GITHUB_OUTPUT
+      # Using '|' literal block scalar avoids any YAML plain scalar colon (: ) conflicts.
+      - name: Generate Application Details
+        id: app
+        run: |
+          echo "=== 1. Writing Dynamic Values to GITHUB_OUTPUT ==="
+          echo "name=sample-app" >> "$GITHUB_OUTPUT"
+          echo "version=1.0.0" >> "$GITHUB_OUTPUT"
+          echo "environment=development" >> "$GITHUB_OUTPUT"
+          echo "Successfully generated and registered 3 step outputs!"
+
+  # ============================================================================
+  # 2. READ-OUTPUTS JOB
+  # Consumes outputs from the 'generate' job using the 'needs' context.
+  # ============================================================================
+  read-outputs:
+    name: Read Job Outputs
+    runs-on: ubuntu-latest
+
+    # 'needs: generate': Required! Grants access to the 'generate' job's outputs.
+    needs: generate
+
+    steps:
+      - name: Display Job Outputs
+        run: |
+          echo "=== 2. Accessing Outputs via needs Context ==="
+          echo "Application Name:    ${{ needs.generate.outputs.app_name }}"
+          echo "Application Version: ${{ needs.generate.outputs.app_version }}"
+          echo "Target Environment:  ${{ needs.generate.outputs.environment }}"
+
+  # ============================================================================
+  # 3. USE-ENV JOB
+  # Demonstrates mapping upstream job outputs directly into job-level environment variables!
+  # ============================================================================
+  use-env:
+    name: Use Outputs as Environment Variables
+    runs-on: ubuntu-latest
+
+    # Depend on 'generate' job to read its outputs
+    needs: generate
+
+    # 'env': Maps upstream job outputs to standard environment variables for all steps
+    env:
+      APP_NAME: ${{ needs.generate.outputs.app_name }}
+      APP_VERSION: ${{ needs.generate.outputs.app_version }}
+
+    steps:
+      - name: Display Environment Variables
+        run: |
+          echo "=== 3. Consuming Job Outputs via Environment Variables ==="
+          echo "Application (via \$APP_NAME):    $APP_NAME"
+          echo "Version (via \$APP_VERSION):    $APP_VERSION"
+
+  # ============================================================================
+  # 4. CONDITIONAL JOB
+  # Demonstrates using an upstream job output inside an 'if' conditional statement.
+  # ============================================================================
+  conditional-job:
+    name: Conditional Job
+    runs-on: ubuntu-latest
+
+    # Depend on 'generate' job
+    needs: generate
+
+    # 'if': Evaluates whether the generated environment output equals 'development'
+    # Evaluated BEFORE the runner is provisioned!
+    if: needs.generate.outputs.environment == 'development'
+
+    steps:
+      - name: Display Conditional Message
+        run: |
+          echo "=== 4. Conditional Job Executed ==="
+          echo "Condition Matched: 'development' environment detected from upstream output!"
+
+  # ============================================================================
+  # 5. BUILD JOB
+  # Generates a second set of outputs (status and artifact name) while also depending on 'generate'.
+  # ============================================================================
+  build:
+    name: Build Application
+    runs-on: ubuntu-latest
+
+    # Depend on 'generate' job
+    needs: generate
+
+    # Expose build results as job-level outputs
+    outputs:
+      build_status: ${{ steps.result.outputs.status }}
+      artifact_name: ${{ steps.result.outputs.artifact }}
+
+    steps:
+      - name: Build Application
+        run: |
+          echo "=== 5. Building Application ==="
+          echo "Building ${{ needs.generate.outputs.app_name }} version ${{ needs.generate.outputs.app_version }}..."
+
+      - name: Set Build Outputs
+        id: result
+        run: |
+          echo "status=success" >> "$GITHUB_OUTPUT"
+          echo "artifact=sample-app-build" >> "$GITHUB_OUTPUT"
+          echo "Build completed successfully!"
+
+  # ============================================================================
+  # 6. SUMMARY JOB (MULTI-JOB FAN-IN)
+  # Waits for BOTH 'generate' and 'build' jobs, consolidating outputs from both sources!
+  # ============================================================================
+  summary:
+    name: Final Job Summary
+    runs-on: ubuntu-latest
+
+    # Declares dependencies on MULTIPLE jobs simultaneously
+    needs: [generate, build]
+
+    steps:
+      - name: Display Final Summary
+        run: |
+          echo "=== 6. Consolidated Multi-Job Outputs Summary ==="
+          echo "Application:  ${{ needs.generate.outputs.app_name }}"
+          echo "Version:      ${{ needs.generate.outputs.app_version }}"
+          echo "Build Status: ${{ needs.build.outputs.build_status }}"
+          echo "Artifact:     ${{ needs.build.outputs.artifact_name }}"
+          echo "All job outputs successfully passed and verified across the pipeline!"
+
+
+    # Evaluated BEFORE the runner is provisioned!
+    if: needs.generate.outputs.environment == 'development'
+    steps:
+      - name: Display Conditional Message
+        run: |
+          echo "=== 4. Conditional Job Executed ==="
+          echo "Condition Matched: 'development' environment detected from upstream output!"
+  # ============================================================================
+  # 5. BUILD JOB
+  # Generates a second set of outputs (status and artifact name) while also depending on 'generate'.
+  # ============================================================================
+  build:
+    name: Build Application
+    runs-on: ubuntu-latest
+    # Depend on 'generate' job
+    needs: generate
+    # Expose build results as job-level outputs
+    outputs:
+      build_status: ${{ steps.result.outputs.status }}
+      artifact_name: ${{ steps.result.outputs.artifact }}
+    steps:
+      - name: Build Application
+        run: |
+          echo "=== 5. Building Application ==="
+          echo "Building ${{ needs.generate.outputs.app_name }} version ${{ needs.generate.outputs.app_version }}..."
+      - name: Set Build Outputs
+        id: result
+        run: |
+          echo "status=success" >> "$GITHUB_OUTPUT"
+          echo "artifact=sample-app-build" >> "$GITHUB_OUTPUT"
+          echo "Build completed successfully!"
+  # ============================================================================
+  # 6. SUMMARY JOB (MULTI-JOB FAN-IN)
+  # Waits for BOTH 'generate' and 'build' jobs, consolidating outputs from both sources!
+  # ============================================================================
+  summary:
+    name: Final Job Summary
+    runs-on: ubuntu-latest
+    # Declares dependencies on MULTIPLE jobs simultaneously
+    needs: [generate, build]
+    steps:
+      - name: Display Final Summary
+        run: |
+          echo "=== 6. Consolidated Multi-Job Outputs Summary ==="
+          echo "Application:  ${{ needs.generate.outputs.app_name }}"
+          echo "Version:      ${{ needs.generate.outputs.app_version }}"
+          echo "Build Status: ${{ needs.build.outputs.build_status }}"
+          echo "Artifact:     ${{ needs.build.outputs.artifact_name }}"
+          echo "All job outputs successfully passed and verified across the pipeline!"
+
+
+
+
+# GitHub Actions: Job Outputs & Cross-Job Communication
+
+# The workflow file has been created at: .github/workflows/job-outputs.yml
+
+# 1. Complete YAML Implementation
+# yaml
+# # ==============================================================================
+# # GitHub Actions Workflow: Job Outputs Demonstration
+# # File Location: .github/workflows/job-outputs.yml
+# # ==============================================================================
+# # 'name': The display title of the workflow shown in the GitHub Actions tab.
+# name: Job Outputs Example
+# # 'on': Specifies the events that trigger this workflow.
+# on:
+#   # Trigger 1: Automatically execute when code is pushed to 'main' or 'development'.
+#   push:
+#     branches:
+#       - main
+#       - development
+#   # Trigger 2: Allow manual workflow execution directly from the GitHub Actions web UI.
+#   workflow_dispatch:
+# # 'jobs': Groups together all the jobs defined in this workflow.
+# jobs:
+#   # ============================================================================
+#   # 1. GENERATE JOB
+#   # Generates dynamic values at runtime, writes them to $GITHUB_OUTPUT,
+#   # and exposes them at the job level so downstream jobs can consume them!
+#   # ============================================================================
+#   generate:
+#     name: Generate Job Outputs
+#     runs-on: ubuntu-latest
+#     # 'outputs': Maps internal step outputs to publicly accessible job-level outputs.
+#     # Syntax: <output_name>: ${{ steps.<step_id>.outputs.<step_output_name> }}
+#     outputs:
+#       app_name: ${{ steps.app.outputs.name }}
+#       app_version: ${{ steps.app.outputs.version }}
+#       environment: ${{ steps.app.outputs.environment }}
+#     steps:
+#       # Step 1: Generate dynamic metadata and append to $GITHUB_OUTPUT
+#       # Using '|' literal block scalar avoids any YAML plain scalar colon (: ) conflicts.
+#       - name: Generate Application Details
+#         id: app
+#         run: |
+#           echo "=== 1. Writing Dynamic Values to GITHUB_OUTPUT ==="
+#           echo "name=sample-app" >> "$GITHUB_OUTPUT"
+#           echo "version=1.0.0" >> "$GITHUB_OUTPUT"
+#           echo "environment=development" >> "$GITHUB_OUTPUT"
+#           echo "Successfully generated and registered 3 step outputs!"
+#   # ============================================================================
+#   # 2. READ-OUTPUTS JOB
+#   # Consumes outputs from the 'generate' job using the 'needs' context.
+#   # ============================================================================
+#   read-outputs:
+#     name: Read Job Outputs
+#     runs-on: ubuntu-latest
+#     # 'needs: generate': Required! Grants access to the 'generate' job's outputs.
+#     needs: generate
+#     steps:
+#       - name: Display Job Outputs
+#         run: |
+#           echo "=== 2. Accessing Outputs via needs Context ==="
+#           echo "Application Name:    ${{ needs.generate.outputs.app_name }}"
+#           echo "Application Version: ${{ needs.generate.outputs.app_version }}"
+#           echo "Target Environment:  ${{ needs.generate.outputs.environment }}"
+#   # ============================================================================
+#   # 3. USE-ENV JOB
+#   # Demonstrates mapping upstream job outputs directly into job-level environment variables!
+#   # ============================================================================
+#   use-env:
+#     name: Use Outputs as Environment Variables
+#     runs-on: ubuntu-latest
+#     # Depend on 'generate' job to read its outputs
+#     needs: generate
+#     # 'env': Maps upstream job outputs to standard environment variables for all steps
+#     env:
+#       APP_NAME: ${{ needs.generate.outputs.app_name }}
+#       APP_VERSION: ${{ needs.generate.outputs.app_version }}
+#     steps:
+#       - name: Display Environment Variables
+#         run: |
+#           echo "=== 3. Consuming Job Outputs via Environment Variables ==="
+#           echo "Application (via \$APP_NAME):    $APP_NAME"
+#           echo "Version (via \$APP_VERSION):    $APP_VERSION"
+#   # ============================================================================
+#   # 4. CONDITIONAL JOB
+#   # Demonstrates using an upstream job output inside an 'if' conditional statement.
+#   # ============================================================================
+#   conditional-job:
+#     name: Conditional Job
+#     runs-on: ubuntu-latest
+#     # Depend on 'generate' job
+#     needs: generate
+#     # 'if': Evaluates whether the generated environment output equals 'development'
+#     # Evaluated BEFORE the runner is provisioned!
+#     if: needs.generate.outputs.environment == 'development'
+#     steps:
+#       - name: Display Conditional Message
+#         run: |
+#           echo "=== 4. Conditional Job Executed ==="
+#           echo "Condition Matched: 'development' environment detected from upstream output!"
+#   # ============================================================================
+#   # 5. BUILD JOB
+#   # Generates a second set of outputs (status and artifact name) while also depending on 'generate'.
+#   # ============================================================================
+#   build:
+#     name: Build Application
+#     runs-on: ubuntu-latest
+#     # Depend on 'generate' job
+#     needs: generate
+#     # Expose build results as job-level outputs
+#     outputs:
+#       build_status: ${{ steps.result.outputs.status }}
+#       artifact_name: ${{ steps.result.outputs.artifact }}
+#     steps:
+#       - name: Build Application
+#         run: |
+#           echo "=== 5. Building Application ==="
+#           echo "Building ${{ needs.generate.outputs.app_name }} version ${{ needs.generate.outputs.app_version }}..."
+#       - name: Set Build Outputs
+#         id: result
+#         run: |
+#           echo "status=success" >> "$GITHUB_OUTPUT"
+#           echo "artifact=sample-app-build" >> "$GITHUB_OUTPUT"
+#           echo "Build completed successfully!"
+#   # ============================================================================
+#   # 6. SUMMARY JOB (MULTI-JOB FAN-IN)
+#   # Waits for BOTH 'generate' and 'build' jobs, consolidating outputs from both sources!
+#   # ============================================================================
+#   summary:
+#     name: Final Job Summary
+#     runs-on: ubuntu-latest
+#     # Declares dependencies on MULTIPLE jobs simultaneously
+#     needs: [generate, build]
+#     steps:
+#       - name: Display Final Summary
+#         run: |
+#           echo "=== 6. Consolidated Multi-Job Outputs Summary ==="
+#           echo "Application:  ${{ needs.generate.outputs.app_name }}"
+#           echo "Version:      ${{ needs.generate.outputs.app_version }}"
+#           echo "Build Status: ${{ needs.build.outputs.build_status }}"
+#           echo "Artifact:     ${{ needs.build.outputs.artifact_name }}"
+#           echo "All job outputs successfully passed and verified across the pipeline!"
+# 2. What are Job Outputs and Why Do We Need Them?
+
+# Every job in GitHub Actions executes inside its own isolated, ephemeral virtual machine. When Job A finishes, its entire filesystem and environment memory are destroyed.
+
+# If Job A computes a value at runtime (such as an auto-generated semantic version v2.4.1, a Docker image tag, or a deployment environment flag), Job B cannot see it unless it is explicitly exported as a Job Output.
+
+# 3. Step Outputs vs. Job Outputs: The Two-Stage Data Flow
+
+# Passing dynamic data across jobs is a two-step handshake:
+
+# text
+# Step in Job A
+#     │
+#     │  (echo "key=value" >> "$GITHUB_OUTPUT")
+#     ▼
+# Step Output
+#     │
+#     │  (Exposed in Job A's 'outputs:' mapping)
+#     ▼
+# Job Output
+#     │
+#     │  (Accessed in Job B via '${{ needs.JobA.outputs.key }}')
+#     ▼
+# Step in Job B
+# Comparison Matrix:
+# Dimension	Step Outputs	Job Outputs
+# Where Defined	Inside a step using echo "key=val" >> "$GITHUB_OUTPUT"	At the top of a job using the outputs: block
+# Access Syntax	${{ steps.<step_id>.outputs.<name> }}	${{ needs.<job_id>.outputs.<name> }}
+# Scope / Availability	Only within other steps of the same job	In downstream jobs that declare needs:
+# Purpose	Local step-to-step data passing	Cross-job virtual machine data passing
+# 4. Key Directives & Concepts Explained
+# A. What is $GITHUB_OUTPUT?
+
+# $GITHUB_OUTPUT is an environment variable provided by GitHub that points to a special temporary file on the runner.
+
+# Appending name=sample-app to this file registers name as an output for that step.
+# (Note: This replaces the deprecated ::set-output syntax).
+# B. What is the Purpose of id: in a Step?
+
+# A step must have an id: (e.g. id: app) to give it a unique namespace. Without an id, downstream steps and the job's outputs: block cannot locate where the output was produced.
+
+# C. Why is the needs: Keyword Mandatory?
+
+# Because GitHub Actions runs jobs in parallel by default, Job B does not know when Job A finishes. Declaring needs: generate ensures:
+
+# Job B pauses until Job A finishes successfully.
+# GitHub automatically populates the needs.generate.outputs context with Job A's exported values.
+# 5. Additional Practical Patterns
+# Pattern 1: Multi-Job Fan-In (Consuming from Multiple Upstream Jobs)
+# yaml
+# jobs:
+#   summary:
+#     runs-on: ubuntu-latest
+#     # Waits for BOTH build and test jobs to complete
+#     needs: [build, test]
+#     steps:
+#       - run: |
+#           echo "Build Artifact: ${{ needs.build.outputs.artifact_id }}"
+#           echo "Test Coverage:  ${{ needs.test.outputs.coverage_pct }}"
+# Pattern 2: Dynamic Conditional Deployment Based on Outputs
+# yaml
+# jobs:
+#   deploy-prod:
+#     runs-on: ubuntu-latest
+#     needs: generate
+#     # Only executes if the upstream job calculated the environment as 'production'
+#     if: needs.generate.outputs.environment == 'production'
+#     steps:
+#       - run: echo "Deploying to production cluster..."
+# Pattern 3: Mapping Job Outputs to Environment Variables
+# yaml
+# jobs:
+#   consume:
+#     runs-on: ubuntu-latest
+#     needs: generate
+#     env:
+#       # Maps output to an OS environment variable accessible as $APP_VERSION
+#       APP_VERSION: ${{ needs.generate.outputs.app_version }}
+#     steps:
+#       - run: echo "Version is $APP_VERSION"
+# 6. Senior DevOps Limitations & Best Practices
+# Job Outputs are Strictly Strings: Even if you write status=true or count=42, GitHub Actions treats them as string literals ("true" and "42").
+# Outputs are for Metadata, NOT Files:
+# Use Job Outputs for: Short strings, version numbers, commit hashes, URLs, status flags, and branch names (
+# <
+# 1
+# <1 MB).
+# Use Artifacts for: Binary builds, .jar files, Docker image tarballs, and compiled frontend bundles (using actions/upload-artifact@v4).
+# Never Store Secrets in Outputs: Job outputs are displayed in plaintext within the GitHub Actions API and UI. Never pass passwords, tokens, or private keys through $GITHUB_OUTPUT.
+# Handling Multiline Outputs Safely: If an output contains multiple lines (e.g. a Git changelog), use an EOF delimiter:
+# bash
+# {
+#   echo "changelog<<EOF"
+#   git log --oneline -3
+#   echo "EOF"
+# } >> "$GITHUB_OUTPUT"
+# 7. Expected Execution Logs
+
+# When you execute this workflow from the Actions tab:
+
+# 1. Job: generate
+# text
+# === 1. Writing Dynamic Values to GITHUB_OUTPUT ===
+# Successfully generated and registered 3 step outputs!
+# 2. Job: read-outputs
+# text
+# === 2. Accessing Outputs via needs Context ===
+# Application Name:    sample-app
+# Application Version: 1.0.0
+# Target Environment:  development
+# 3. Job: use-env
+# text
+# === 3. Consuming Job Outputs via Environment Variables ===
+# Application (via $APP_NAME):    sample-app
+# Version (via $APP_VERSION):    1.0.0
+# 4. Job: conditional-job
+# text
+# === 4. Conditional Job Executed ===
+# Condition Matched: 'development' environment detected from upstream output!
+# 5. Job: build
+# text
+# === 5. Building Application ===
+# Building sample-app version 1.0.0...
+# Build completed successfully!
+# 6. Job: summary
+# text
+# === 6. Consolidated Multi-Job Outputs Summary ===
+# Application:  sample-app
+# Version:      1.0.0
+# Build Status: success
+# Artifact:     sample-app-build
+# All job outputs successfully passed and verified across the pipeline!
+# 8. How to Test and Execute
+
+# When you are ready to test:
+
+# Commit and push:
+# bash
+# git add .github/workflows/job-outputs.yml
+# git commit -m "feat(ci): add job outputs and cross-job communication demo workflow"
+# git push origin main
+# Navigate to your GitHub repository in your web browser.
+# Click the Actions tab.
+# Select Job Outputs Example from the left sidebar.
+# Click Run workflow 
+# →
+# → Run workflow.
+# View the visual dependency graph: observe how generate runs first, fan-outs to read-outputs, use-env, conditional-job, and build, and finally fans-in to summary!
