@@ -90,3 +90,82 @@ jobs:
           echo "=== Executing Automated Unit Tests ==="
           npm test
 
+# In GitHub Actions, the following configuration defines the default working directory for all run steps in a workflow or job.
+# defaults:
+#   run:
+#     working-directory: sample-app
+
+
+# What does it mean?
+# - defaults: Defines default settings for workflow or job steps.
+# - run: Applies the defaults to steps that use the run keyword.
+# - working-directory: Specifies the directory where commands should execute.
+# - sample-app: The folder where GitHub Actions executes the commands.
+# Simple example
+# Project structure:
+# my-project/
+# ├── .github/
+# │   └── workflows/
+# │       └── ci.yml
+# └── sample-app/
+#     ├── package.json
+#     └── index.js
+
+
+# .github/workflows/ci.yml
+# name: Working Directory Example
+
+# on:
+#   push:
+#     branches:
+#       - main
+
+# jobs:
+#   build:
+#     runs-on: ubuntu-latest
+
+#     # All run commands execute inside sample-app
+#     defaults:
+#       run:
+#         working-directory: sample-app
+
+#     steps:
+#       - name: Checkout Repository
+#         uses: actions/checkout@v4
+
+#       - name: Display Current Directory
+#         run: pwd
+
+#       - name: Install Dependencies
+#         run: npm install
+
+#       - name: Run Application
+#         run: node index.js
+
+
+# Expected execution
+# /home/runner/work/my-project/my-project/sample-app
+
+
+# The npm install and node index.js commands execute inside sample-app, without needing to specify cd sample-app in every step.
+# Workflow-level vs Job-level defaults
+# Workflow-level: Applies to all jobs.
+# defaults:
+#   run:
+#     working-directory: sample-app
+
+
+# Job-level: Applies only to the specified job.
+# jobs:
+#   build:
+#     runs-on: ubuntu-latest
+#     defaults:
+#       run:
+#         working-directory: sample-app
+
+
+# Important points:
+# 1. The directory must exist when the run step executes.
+# 2. The path is relative to the GitHub Actions workspace.
+# 3. It applies only to run steps, not to actions invoked using uses.
+# 4. A job-level default overrides the workflow-level default.

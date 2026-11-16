@@ -1,0 +1,91 @@
+# ==============================================================================
+# GitHub Actions Workflow: Parallel Jobs Demonstration
+# File Location: .github/workflows/parallel-jobs.yml
+# ==============================================================================
+
+# 'name': The display title of the workflow shown in the GitHub Actions tab.
+name: Parallel Jobs Example
+
+# 'on': Specifies the events that trigger this workflow.
+on:
+  # Trigger 1: Automatically execute when code is pushed to 'main' or 'development'.
+  push:
+    branches:
+      - main
+      - development
+
+  # Trigger 2: Allow manual execution directly from the GitHub Actions web UI.
+  workflow_dispatch:
+
+# 'jobs': Groups together all the jobs defined in this workflow.
+# In GitHub Actions, any jobs that do NOT declare a 'needs' dependency will
+# automatically be scheduled and executed in PARALLEL by default!
+jobs:
+
+  # ============================================================================
+  # FIRST PARALLEL JOB: job-one
+  # GitHub assigns an isolated Ubuntu virtual machine to run this job.
+  # ============================================================================
+  job-one:
+    # 'name': Human-readable label displayed in the GitHub Actions visualization graph.
+    name: Job One
+    # 'runs-on': Allocates a fresh, independent Ubuntu Linux runner for this job.
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Print welcome message for Job One
+      # Using '|' literal block scalar avoids any YAML plain scalar colon (: ) conflicts.
+      - name: Display Job One Message
+        run: |
+          echo "Hello from Job One"
+
+      # Step 2: Print details and completion for Job One
+      - name: Display Job One Details
+        run: |
+          echo "This is the first parallel job"
+          echo "Job One execution completed"
+
+  # ============================================================================
+  # SECOND PARALLEL JOB: job-two
+  # Because job-two has no 'needs' relationship, GitHub runs it simultaneously
+  # alongside job-one on a SEPARATE virtual machine.
+  # ============================================================================
+  job-two:
+    # 'name': Human-readable label displayed in the GitHub Actions visualization graph.
+    name: Job Two
+    # 'runs-on': Allocates its own separate, independent Ubuntu Linux runner.
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Print welcome message for Job Two
+      - name: Display Job Two Message
+        run: |
+          echo "Hello from Job Two"
+
+      # Step 2: Print details and completion for Job Two
+      - name: Display Job Two Details
+        run: |
+          echo "This is the second parallel job"
+          echo "Job Two execution completed"
+
+  # ============================================================================
+  # THIRD PARALLEL JOB: job-three
+  # Runs concurrently alongside job-one and job-two on yet another virtual machine.
+  # ============================================================================
+  job-three:
+    # 'name': Human-readable label displayed in the GitHub Actions visualization graph.
+    name: Job Three
+    # 'runs-on': Allocates its own separate, independent Ubuntu Linux runner.
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Print welcome message for Job Three
+      - name: Display Job Three Message
+        run: |
+          echo "Hello from Job Three"
+
+      # Step 2: Print details and completion for Job Three
+      - name: Display Job Three Details
+        run: |
+          echo "This is the third parallel job"
+          echo "Job Three execution completed"
