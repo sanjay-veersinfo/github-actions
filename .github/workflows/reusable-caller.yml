@@ -1,0 +1,365 @@
+# ==============================================================================
+# GitHub Actions Caller Workflow (Invokes Reusable Callee Workflow)
+# File Location: .github/workflows/reusable-caller.yml
+# ==============================================================================
+
+# 'name': Title of the caller workflow displayed in GitHub Actions UI
+name: Reusable Caller Workflow
+
+# 'on': Triggers for executing the caller workflow
+on:
+  # Trigger 1: Allows manual execution with configurable input fields from GitHub UI
+  workflow_dispatch:
+    inputs:
+      app_name:
+        description: "Application Name to pass to callee"
+        required: false
+        default: "Sample Node App"
+        type: string
+      environment:
+        description: "Environment to pass to callee"
+        required: false
+        default: "Development"
+        type: string
+
+  # Trigger 2: Automatic execution on push to 'main' or 'development' branch
+  push:
+    branches:
+      - main
+      - development
+
+# 'jobs': Groups all jobs in the caller workflow
+jobs:
+
+  # ============================================================================
+  # CALLER JOB: Invokes the reusable callee workflow
+  # CRITICAL RULES FOR CALLER JOBS:
+  # 1. Caller jobs use the 'uses' keyword at the job level (NOT inside steps).
+  # 2. DO NOT define 'runs-on' or 'steps' in this job. The callee defines them.
+  # 3. For local workflows in the same repository, use the relative path:
+  #    './.github/workflows/<filename>.yml'
+  # 4. Use the 'with' keyword to pass input parameters to the callee.
+  # 5. Use the 'secrets' keyword to pass secrets (or 'secrets: inherit').
+  # ============================================================================
+  call-reusable-workflow:
+    name: Invoke Reusable Callee
+    # 'uses': Specifies the path to the callee workflow file
+    uses: ./.github/workflows/reusable-callee.yml
+
+    # 'with': Supplies values for the inputs declared under 'workflow_call.inputs' in the callee
+    with:
+      app_name: ${{ inputs.app_name || 'Sample Node App' }}
+      environment: ${{ inputs.environment || 'Development' }}
+
+    # 'secrets': (Optional) Passes secrets to the callee workflow.
+    # Note: If no DEPLOY_TOKEN secret is configured in the repository, the callee
+    # safely handles the empty value without errors.
+    secrets:
+      deploy_token: ${{ secrets.DEPLOY_TOKEN }}
+
+
+What is a Reusable Workflow?
+
+In continuous integration and deployment (CI/CD), software teams frequently repeat the same deployment, testing, and security scanning routines across multiple repositories and workflows.
+
+Instead of copying and pasting identical YAML code, GitHub Actions allows you to treat a workflow like a reusable function:
+
+Callee Workflow (Reusable): Defines what tasks to execute and declares which parameters (inputs) and credentials (secrets) it accepts using the workflow_call trigger.
+Caller Workflow (Consumer): Invokes the callee workflow using the uses keyword at the job level and passes runtime arguments using with: and secrets:.
+2. Callee Workflow Implementation (reusable-callee.yml)
+
+The callee defines the reusable logic, required inputs, and the runner environment.
+
+yaml
+# ==============================================================================
+# GitHub Actions Reusable Workflow (Callee Workflow)
+# File Location: .github/workflows/reusable-callee.yml
+# ==============================================================================
+# 'name': Title of the reusable workflow shown in run details
+name: Reusable Callee Workflow
+# 'on': Defines the triggers that activate this workflow.
+# 'workflow_call' is the specific trigger that marks this workflow as REUSABLE,
+# allowing other workflows (callers) to invoke it like a function.
+on:
+  workflow_call:
+    # 'inputs': Parameters expected from the caller workflow
+    inputs:
+      app_name:
+        description: "Name of the application being processed"
+        required: true
+        type: string
+      environment:
+        description: "Deployment or execution environment (e.g., Development, Staging, Production)"
+        required: true
+        type: string
+        default: "Development"
+    # 'secrets': Optional secure credentials passed from the caller workflow
+    secrets:
+      deploy_token:
+        description: "Optional deployment or API secret token"
+        required: false
+# 'jobs': The execution logic of the reusable workflow
+# NOTE: The callee workflow defines its own runner ('runs-on') and 'steps'.
+jobs:
+  run-callee-tasks:
+    name: Execute Callee Job
+    runs-on: ubuntu-latest
+    steps:
+      # Step 1: Log workflow startup banner
+      - name: Workflow Start Message
+        run: |
+          echo "=========================================="
+          echo "Reusable workflow started!"
+          echo "=========================================="
+      # Step 2: Access and print input parameters
+      # Inputs are referenced via the 'inputs' context: ${{ inputs.<input_name> }}
+      - name: Display Application and Environment Information
+        run: |
+          echo "Application Name: ${{ inputs.app_name }}"
+          echo "Environment:      ${{ inputs.environment }}"
+      # Step 3: Optional safe secret inspection
+      # Secrets are referenced via the 'secrets' context: ${{ secrets.<secret_name> }}
+      # Security Best Practice: Never echo the raw secret value to the console!
+      - name: Verify Optional Secret Reception
+        run: |
+          if [ -n "${{ secrets.deploy_token }}" ]; then
+            echo "Secret Status: Optional 'deploy_token' received securely."
+          else
+            echo "Secret Status: No 'deploy_token' supplied by caller (standard mode)."
+          fi
+      # Step 4: Log workflow completion banner
+      - name: Workflow Completion Message
+        run: |
+          echo "=========================================="
+          echo "Reusable workflow completed successfully!"
+          echo "=========================================="
+
+# 1. What is a Reusable Workflow?
+
+# In continuous integration and deployment (CI/CD), software teams frequently repeat the same deployment, testing, and security scanning routines across multiple repositories and workflows.
+
+# Instead of copying and pasting identical YAML code, GitHub Actions allows you to treat a workflow like a reusable function:
+
+# Callee Workflow (Reusable): Defines what tasks to execute and declares which parameters (inputs) and credentials (secrets) it accepts using the workflow_call trigger.
+# Caller Workflow (Consumer): Invokes the callee workflow using the uses keyword at the job level and passes runtime arguments using with: and secrets:.
+
+# 2. Callee Workflow Implementation (reusable-callee.yml)
+
+# The callee defines the reusable logic, required inputs, and the runner environment.
+
+# yaml
+# # ==============================================================================
+# # GitHub Actions Reusable Workflow (Callee Workflow)
+# # File Location: .github/workflows/reusable-callee.yml
+# # ==============================================================================
+# # 'name': Title of the reusable workflow shown in run details
+# name: Reusable Callee Workflow
+# # 'on': Defines the triggers that activate this workflow.
+# # 'workflow_call' is the specific trigger that marks this workflow as REUSABLE,
+# # allowing other workflows (callers) to invoke it like a function.
+# on:
+#   workflow_call:
+#     # 'inputs': Parameters expected from the caller workflow
+#     inputs:
+#       app_name:
+#         description: "Name of the application being processed"
+#         required: true
+#         type: string
+#       environment:
+#         description: "Deployment or execution environment (e.g., Development, Staging, Production)"
+#         required: true
+#         type: string
+#         default: "Development"
+#     # 'secrets': Optional secure credentials passed from the caller workflow
+#     secrets:
+#       deploy_token:
+#         description: "Optional deployment or API secret token"
+#         required: false
+# # 'jobs': The execution logic of the reusable workflow
+# # NOTE: The callee workflow defines its own runner ('runs-on') and 'steps'.
+# jobs:
+#   run-callee-tasks:
+#     name: Execute Callee Job
+#     runs-on: ubuntu-latest
+#     steps:
+#       # Step 1: Log workflow startup banner
+#       - name: Workflow Start Message
+#         run: |
+#           echo "=========================================="
+#           echo "Reusable workflow started!"
+#           echo "=========================================="
+#       # Step 2: Access and print input parameters
+#       # Inputs are referenced via the 'inputs' context: ${{ inputs.<input_name> }}
+#       - name: Display Application and Environment Information
+#         run: |
+#           echo "Application Name: ${{ inputs.app_name }}"
+#           echo "Environment:      ${{ inputs.environment }}"
+#       # Step 3: Optional safe secret inspection
+#       # Secrets are referenced via the 'secrets' context: ${{ secrets.<secret_name> }}
+#       # Security Best Practice: Never echo the raw secret value to the console!
+#       - name: Verify Optional Secret Reception
+#         run: |
+#           if [ -n "${{ secrets.deploy_token }}" ]; then
+#             echo "Secret Status: Optional 'deploy_token' received securely."
+#           else
+#             echo "Secret Status: No 'deploy_token' supplied by caller (standard mode)."
+#           fi
+#       # Step 4: Log workflow completion banner
+#       - name: Workflow Completion Message
+#         run: |
+#           echo "=========================================="
+#           echo "Reusable workflow completed successfully!"
+#           echo "=========================================="
+
+#           3. Caller Workflow Implementation (reusable-caller.yml)
+
+# The caller triggers manually or on push, then calls the callee by pointing to its YAML path and providing input arguments.
+
+# yaml
+# # ==============================================================================
+# # GitHub Actions Caller Workflow (Invokes Reusable Callee Workflow)
+# # File Location: .github/workflows/reusable-caller.yml
+# # ==============================================================================
+# # 'name': Title of the caller workflow displayed in GitHub Actions UI
+# name: Reusable Caller Workflow
+# # 'on': Triggers for executing the caller workflow
+# on:
+#   # Trigger 1: Allows manual execution with configurable input fields from GitHub UI
+#   workflow_dispatch:
+#     inputs:
+#       app_name:
+#         description: "Application Name to pass to callee"
+#         required: false
+#         default: "Sample Node App"
+#         type: string
+#       environment:
+#         description: "Environment to pass to callee"
+#         required: false
+#         default: "Development"
+#         type: string
+#   # Trigger 2: Automatic execution on push to 'main' or 'development' branch
+#   push:
+#     branches:
+#       - main
+#       - development
+# # 'jobs': Groups all jobs in the caller workflow
+# jobs:
+#   # ============================================================================
+#   # CALLER JOB: Invokes the reusable callee workflow
+#   # CRITICAL RULES FOR CALLER JOBS:
+#   # 1. Caller jobs use the 'uses' keyword at the job level (NOT inside steps).
+#   # 2. DO NOT define 'runs-on' or 'steps' in this job. The callee defines them.
+#   # 3. For local workflows in the same repository, use the relative path:
+#   #    './.github/workflows/<filename>.yml'
+#   # 4. Use the 'with' keyword to pass input parameters to the callee.
+#   # 5. Use the 'secrets' keyword to pass secrets (or 'secrets: inherit').
+#   # ============================================================================
+#   call-reusable-workflow:
+#     name: Invoke Reusable Callee
+#     # 'uses': Specifies the path to the callee workflow file
+#     uses: ./.github/workflows/reusable-callee.yml
+#     # 'with': Supplies values for the inputs declared under 'workflow_call.inputs' in the callee
+#     with:
+#       app_name: ${{ inputs.app_name || 'Sample Node App' }}
+#       environment: ${{ inputs.environment || 'Development' }}
+#     # 'secrets': (Optional) Passes secrets to the callee workflow.
+#     # Note: If no DEPLOY_TOKEN secret is configured in the repository, the callee
+#     # safely handles the empty value without errors.
+#     secrets:
+#       deploy_token: ${{ secrets.DEPLOY_TOKEN }}
+
+#       5. Detailed Breakdown of Keywords & Mechanics
+# A. on: workflow_call (In the Callee)
+# Designates the workflow as callable by other workflows.
+# Defines the input interface under inputs: (name, type, required status, default value).
+# Defines acceptable secrets under secrets: (name, required status).
+# B. uses at the Job Level (In the Caller)
+
+# In standard workflows, uses: is placed inside steps: to run an action (like actions/checkout@v4). However, for reusable workflows:
+
+# uses: is placed directly under the job key:
+# yaml
+# jobs:
+#   my-job:
+#     uses: ./.github/workflows/reusable-callee.yml
+# Local reference syntax: Local reusable workflows in the same repository must start with ./ and reside inside .github/workflows/.
+# External reference syntax: If calling a workflow from another repository, reference it as:
+# yaml
+# uses: my-org/shared-workflows/.github/workflows/deploy.yml@v1
+# C. with: vs. secrets:
+# with: (Inputs): Used for non-sensitive values like environment names, application names, build flags, and versions. These values are readable in the workflow logs.
+# secrets: (Credentials): Used for private tokens, passwords, and API keys. GitHub automatically masks these values in logs.
+# secrets: inherit shortcut: Instead of passing secrets one-by-one, caller workflows can pass:
+# yaml
+# secrets: inherit
+# This automatically grants the callee access to all secrets available to the caller.
+# 6. Expected Execution Logs
+
+# When you run reusable-caller.yml, GitHub Actions provisions a runner for the callee job. The logs will display:
+
+# text
+# ==========================================
+# Reusable workflow started!
+# ==========================================
+# Application Name: Sample Node App
+# Environment:      Development
+# Secret Status: No 'deploy_token' supplied by caller (standard mode).
+# ==========================================
+# Reusable workflow completed successfully!
+# ==========================================
+# 7. Important Rules & Common Mistakes
+
+# IMPORTANT
+
+# Rule 1: Caller jobs must NOT contain runs-on or steps
+# ❌ Invalid:
+
+# yaml
+# call-reusable-workflow:
+#   runs-on: ubuntu-latest    # ERROR!
+#   uses: ./.github/workflows/reusable-callee.yml
+#   steps:                     # ERROR!
+#     - run: echo "Hi"
+
+# ✔ Valid: The caller job defines only uses, with, secrets, and optionally needs or if. The callee specifies runs-on and steps.
+
+# WARNING
+
+# Rule 2: Do NOT call a reusable workflow from inside steps
+# ❌ Invalid:
+
+# yaml
+# steps:
+#   - uses: ./.github/workflows/reusable-callee.yml  # ERROR: Only actions can be run in steps!
+
+# NOTE
+
+# Rule 3: Maximum Nesting Depth
+# GitHub Actions allows up to 4 levels of nesting:
+# Caller Workflow 
+# →
+# → Callee 1 
+# →
+# → Callee 2 
+# →
+# → Callee 3.
+
+# 8. Step-by-Step UI Verification & Testing Guide
+# Verify Files on Disk:
+# bash
+# git status
+# Commit and Push:
+# bash
+# git add .github/workflows/reusable-callee.yml .github/workflows/reusable-caller.yml
+# git commit -m "ci: add reusable workflow caller and callee demonstration"
+# git push origin main
+# Trigger Workflow in GitHub UI:
+# Go to your repository on GitHub.
+# Click the Actions tab.
+# Select Reusable Caller Workflow in the left sidebar.
+# Click Run workflow. Notice the input fields app_name and environment are pre-populated with default values.
+# Click the green Run workflow button.
+# Inspect the Workflow Graph:
+# Click the active workflow run.
+# In the run visualization, notice Invoke Reusable Callee displays a special reusable workflow icon indicating it delegates execution to reusable-callee.yml.
+# Click into the job to inspect the logs showing inputs received and processed.
