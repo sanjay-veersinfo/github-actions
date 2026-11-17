@@ -138,3 +138,293 @@ jobs:
         run: |
           echo "Executing test suite with setup-node built-in cache..."
           npm test
+
+
+# GitHub Actions Dependency Caching Basics
+
+# The dependency caching workflow has been created and verified at: 👉 .github/workflows/cache-basics.yml
+# (A synchronized backup copy is also preserved at example-yaml-files/cache-basics.yml)
+
+# 1. Existing Application Inspection Report
+
+# Before generating the workflow, the repository structure and sample application were inspected:
+
+# Inspection Item	Discovered Repository Property	Application Note
+# Application Directory	Repository Root (.)	package.json is located directly at root.
+# Package Manager	npm	Standard Node.js package manager.
+# Lock File	package-lock.json	Lockfile format version 3 present at root.
+# Sample Test Suite	sample/math.test.js	8 unit tests using Node.js built-in node:test runner.
+# Test Script	npm test	Defined in package.json (node --test sample/*.test.js).
+# Cache Target Path	~/.npm (Linux / macOS)	Official global npm download cache directory.
+
+# NOTE
+
+# Per the prompt's instructions: because the sample application is located directly at the repository root (.) and not inside a subdirectory named sample-app, the working directory and lockfile paths are configured as working-directory: . and package-lock.json.
+
+# 2. Complete Workflow YAML Configuration
+# yaml
+# # ==============================================================================
+# # GitHub Actions Workflow: Dependency Caching Basics Demonstration
+# # File Location: .github/workflows/cache-basics.yml
+# # ==============================================================================
+# # 'name': Display name shown in GitHub Actions web interface
+# name: Cache Basics Example
+# # 'on': Defines the events that trigger workflow execution
+# on:
+#   # Trigger 1: Automatically execute on push to 'main' or 'development'
+#   push:
+#     branches:
+#       - main
+#       - development
+#   # Trigger 2: Automatically execute on Pull Requests targeting 'main' or 'development'
+#   pull_request:
+#     branches:
+#       - main
+#       - development
+#   # Trigger 3: Allow manual execution directly from GitHub Actions UI
+#   workflow_dispatch:
+# # 'jobs': Groups all caching demonstration jobs
+# jobs:
+#   # ============================================================================
+#   # JOB 1: Explicit Caching Using 'actions/cache@v4'
+#   # Demonstrates how actions/cache works under the hood with explicit keys,
+#   # restore-keys fallbacks, cache paths, and cache-hit inspection.
+#   # ============================================================================
+#   build:
+#     name: Node.js Dependency Cache (actions/cache)
+#     runs-on: ubuntu-latest
+#     # Working directory is the repository root where package.json & lockfile reside
+#     defaults:
+#       run:
+#         working-directory: .
+#     steps:
+#       # Step 1: Download the repository source code
+#       - name: Checkout Repository
+#         uses: actions/checkout@v4
+#       # Step 2: Set up Node.js runtime environment (version 22 LTS)
+#       - name: Setup Node.js
+#         uses: actions/setup-node@v4
+#         with:
+#           node-version: 22
+#       # Step 3: Restore or prepare to save npm cache using actions/cache@v4
+#       - name: Restore npm Cache
+#         id: npm-cache
+#         uses: actions/cache@v4
+#         with:
+#           # 'path': Directory where npm stores downloaded package tarballs
+#           # NOTE: On Linux/macOS runners, this is ~/.npm (on Windows, it is %LocalAppData%\npm-cache)
+#           path: ~/.npm
+#           # 'key': Primary unique key computed from OS name and hash of the lock file
+#           # If package-lock.json changes, hashFiles() produces a new SHA-256 hash
+#           key: ${{ runner.os }}-node-${{ hashFiles('package-lock.json') }}
+#           # 'restore-keys': Ordered prefix fallback search if exact key is not found
+#           # Useful when adding/updating dependencies so only changed packages are downloaded
+#           restore-keys: |
+#             ${{ runner.os }}-node-
+#       # Step 4: Install project dependencies
+#       # 'npm ci' checks the ~/.npm cache before making any network requests.
+#       # If cached, dependencies are installed from local disk, saving download time.
+#       - name: Install Dependencies
+#         run: |
+#           npm ci
+#       # Step 5: Check whether an exact cache hit occurred
+#       # 'steps.npm-cache.outputs.cache-hit' evaluates to:
+#       # - 'true': Exact cache key matched and was restored
+#       # - 'false': No exact key matched (either cache miss or fallback restore-key used)
+#       - name: Display Cache Status
+#         run: |
+#           echo "=== Cache Hit Status Inspection ==="
+#           echo "Exact Cache Hit: '${{ steps.npm-cache.outputs.cache-hit }}'"
+#           if [ "${{ steps.npm-cache.outputs.cache-hit }}" = "true" ]; then
+#             echo "Result: Exact cache match restored successfully! Dependencies loaded from cache."
+#           else
+#             echo "Result: Cache miss or partial fallback key restored. Fresh packages were downloaded."
+#           fi
+#       # Step 6: Execute the test suite using existing Node.js test runner
+#       - name: Run Tests
+#         run: |
+#           echo "Running unit tests against sample math module..."
+#           npm test
+#   # ============================================================================
+#   # JOB 2: Built-in Caching Using 'actions/setup-node@v4'
+#   # Demonstrates the modern, streamlined approach where setup-node configures
+#   # caching automatically, eliminating the need for a separate actions/cache step.
+#   # ============================================================================
+#   setup-node-cache:
+#     name: Cache Using Setup Node (Built-in)
+#     runs-on: ubuntu-latest
+#     defaults:
+#       run:
+#         working-directory: .
+#     steps:
+#       # Step 1: Download repository source code
+#       - name: Checkout Repository
+#         uses: actions/checkout@v4
+#       # Step 2: Setup Node.js and enable automatic npm cache management
+#       # Under the hood, actions/setup-node utilizes actions/cache logic with
+#       # optimal defaults for ~/.npm and automatic lockfile hashing.
+#       - name: Setup Node.js With Built-in Cache
+#         uses: actions/setup-node@v4
+#         with:
+#           node-version: 22
+#           # Enable npm dependency caching automatically
+#           cache: npm
+#           # Specify lock file path used to generate cache key
+#           cache-dependency-path: package-lock.json
+#       # Step 3: Install dependencies using the restored npm cache
+#       - name: Install Dependencies
+#         run: |
+#           npm ci
+#       # Step 4: Execute application unit tests
+#       - name: Run Tests
+#         run: |
+#           echo "Executing test suite with setup-node built-in cache..."
+#           npm test
+# 3. Understanding the Cache Key Structure
+
+# In Job 1, the cache key is constructed using:
+
+# yaml
+# key: ${{ runner.os }}-node-${{ hashFiles('package-lock.json') }}
+# Line-by-Line Breakdown:
+# ${{ runner.os }}: Evaluates to the operating system of the runner (e.g., Linux, Windows, or macOS). This prevents binary incompatibility when compiling or using platform-specific dependencies.
+# node: A static descriptive prefix identifying the runtime/purpose of the cache.
+# hashFiles('package-lock.json'): Evaluates the SHA-256 cryptographic checksum of package-lock.json. If any dependency is added, updated, or removed, the hash changes completely.
+# Example Concrete Key:
+# text
+# Linux-node-7b89d44f651c6c08e5e89d53347065ec01b8764f43423b01859942a78d052d91
+
+# TIP
+
+# Why cache ~/.npm instead of node_modules?
+# When running npm ci in continuous integration, npm will automatically delete the existing node_modules folder before installation begins to guarantee a pure, clean build. If you cache node_modules, npm ci deletes it immediately, wasting the time spent downloading the cache! By caching ~/.npm (npm's internal package tarball store), npm ci extracts packages directly from the local disk cache without making remote network calls.
+
+# 4. How restore-keys Fallback Works
+
+# The restore-keys setting defines a list of alternative prefix keys searched sequentially if no exact key match is found:
+
+# yaml
+# restore-keys: |
+#   ${{ runner.os }}-node-
+# Resolution Lifecycle:
+# Exact Key Search: GitHub Actions looks for Linux-node-<current_hash>.
+# Prefix Fallback: If not found, it looks for the most recently created cache beginning with Linux-node-.
+# Partial Benefit: Even though package-lock.json changed, 95% of packages are usually identical. npm restores the older cached packages from disk and downloads only the newly added/updated packages over the internet.
+# Cache Miss: If no prefix matches, the runner starts with an empty cache.
+# 5. Interpreting steps.npm-cache.outputs.cache-hit
+
+# The actions/cache action exposes a single output: cache-hit.
+
+# Value	Meaning	Typical Workflow Impact
+# 'true'	An exact cache key was matched and restored.	Dependencies were entirely present in cache. Zero remote downloads required.
+# 'false'	Exact key was not found (either a cache miss OR a fallback restore-keys match occurred).	New or modified dependencies will be downloaded from the npm registry. A new cache will be saved at the end of the job.
+# Empty	The step failed or was skipped.	No cache interaction.
+
+# IMPORTANT
+
+# When a cache is restored via restore-keys prefix matching, cache-hit is false. This is intentional because GitHub Actions needs to know that the exact key is missing so it can save an updated cache entry at the end of the job.
+
+# 6. Built-in Caching: actions/setup-node
+
+# In Job 2, the built-in caching provided by actions/setup-node@v4 is used:
+
+# yaml
+# - name: Setup Node.js With Built-in Cache
+#   uses: actions/setup-node@v4
+#   with:
+#     node-version: 22
+#     cache: npm
+#     cache-dependency-path: package-lock.json
+# Why Built-in Caching is Recommended:
+# No boilerplate: Eliminates 15+ lines of YAML configuration.
+# Cross-platform accuracy: Automatically selects ~/.npm on Linux/macOS and %LocalAppData%\npm-cache on Windows.
+# Standardized keys: Automatically handles OS identification and lockfile hashing.
+# Multi-package manager support: Supports npm, yarn, and pnpm with a single property (cache: npm | yarn | pnpm).
+# 7. Workflow Execution Scenarios
+# Scenario A: First Workflow Run (Cold Cache / Cache Miss)
+# Restore npm Cache: Searches for Linux-node-<hash> 
+# →
+# → Not Found (Cache Miss).
+# Install Dependencies: npm ci connects to registry.npmjs.org, downloads tarballs, and populates ~/.npm and node_modules.
+# Run Tests: npm test executes the test suite.
+# Post Cache Step (Automatic): After the job completes successfully, the action archives ~/.npm and stores it in GitHub's cache storage tagged as Linux-node-<hash>.
+# Scenario B: Second Workflow Run (Warm Cache / Exact Cache Hit)
+# Restore npm Cache: Searches for Linux-node-<hash> 
+# →
+# → Found (Cache Hit: true).
+# Restoration: GitHub Actions pulls the archive and extracts ~/.npm onto the runner in seconds.
+# Install Dependencies: npm ci reads directly from the local disk cache. Network bandwidth is saved and execution speed increases significantly.
+# Run Tests: Tests execute normally.
+# Post Cache Step: Because an exact match was restored, saving is skipped (caches are immutable).
+# 8. Core Concepts, Limitations & Best Practices
+# 1. What is caching?
+
+# Caching stores frequently downloaded external dependencies (such as npm modules, Maven packages, or pip wheels) and intermediate build outputs in GitHub's high-speed cloud storage so subsequent jobs do not have to download or recompile them from scratch.
+
+# 2. Why is caching useful in CI/CD?
+# Speed: Drastically reduces total pipeline runtime (shorter feedback loop).
+# Reliability: Decreases vulnerability to external registry outages or intermittent network timeouts.
+# Bandwidth: Conserves compute minutes and data transfer limits.
+# 3. What is the difference between actions/cache and actions/setup-node caching?
+# actions/cache: Generic caching mechanism for any file or folder (custom build artifacts, compiler caches like ccache, custom directories).
+# setup-node: High-level wrapper built on top of actions/cache that pre-configures paths, lockfiles, and keys specifically for Node.js package managers.
+# 4. Cache vs. Artifact: What is the difference?
+# Feature	GitHub Actions Cache	GitHub Actions Artifact (actions/upload-artifact)
+# Primary Purpose	Accelerate builds by reusing dependencies.	Pass build outputs between jobs or retain deployment binaries/test reports.
+# Lifecycle	Persists across separate workflow runs.	Scoped to a single workflow run (by default).
+# Reliability	Best-effort (can be evicted if quota is exceeded).	Guaranteed retention for configured duration (default: 90 days).
+# Downloadable	Not directly downloadable from GitHub UI.	Downloadable as a ZIP archive directly from the run summary.
+# 5. Cache Limitations & Eviction Policy:
+# 10 GB Repository Limit: Each repository has a total cache limit of 10 GB.
+# Least Recently Used (LRU) Eviction: Once the 10 GB threshold is reached, GitHub automatically deletes the oldest untouched caches to free space.
+# 7-Day Retention: Any cache not accessed in 7 days is permanently deleted.
+# Immutability: Once a cache is created under a specific key, it cannot be modified. To refresh or update a cache, you must change the key (e.g., updating dependencies changes the hashFiles output).
+# Branch Scope Isolation:
+# A workflow run on main can access caches created on main.
+# A workflow run on a feature branch (or PR) can access caches from its own branch and from the default branch (main), but cannot access sibling feature branches.
+# A feature branch cannot overwrite caches on main.
+# Security: Never cache sensitive data such as API tokens, private SSH keys, .env files, or passwords.
+# 9. Step-by-Step Testing & Verification Instructions
+
+# Follow these steps to observe both a cache miss and a cache hit in your GitHub repository:
+
+# Review Local Files: Verify that .github/workflows/cache-basics.yml exists:
+
+# bash
+# git status
+
+# Commit and Push:
+
+# bash
+# git add .github/workflows/cache-basics.yml
+# git commit -m "ci: add cache basics demonstration workflow"
+# git push origin main
+
+# Trigger First Run (Cache Miss):
+
+# Open your repository on GitHub.
+# Go to the Actions tab.
+# Select Cache Basics Example in the left sidebar.
+# Click Run workflow 
+# →
+# → select main 
+# →
+# → click the green Run workflow button.
+# Open the running job Node.js Dependency Cache (actions/cache).
+# Expand the Restore npm Cache step: observe Cache not found for input keys.
+# Expand Display Cache Status: observe Exact Cache Hit: 'false'.
+# Expand the Post Restore npm Cache step at the bottom: observe Cache saved successfully with key: Linux-node-....
+
+# Trigger Second Run (Cache Hit):
+
+# Trigger the workflow again manually using Run workflow.
+# Open the new execution logs.
+# Expand the Restore npm Cache step: observe Cache restored successfully from key: Linux-node-....
+# Expand Display Cache Status: observe Exact Cache Hit: 'true'.
+# In the Post Restore npm Cache step, observe that saving is skipped because the exact key already exists.
+
+# Test Cache Invalidation:
+
+# Add a lightweight dependency or update package.json / package-lock.json.
+# Push the change.
+# Observe that hashFiles('package-lock.json') produces a new key, triggering a cache miss, restoring from restore-keys: Linux-node-, and saving a new cache key.
