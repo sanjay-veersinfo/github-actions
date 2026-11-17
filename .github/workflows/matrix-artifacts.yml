@@ -1,0 +1,422 @@
+# ==============================================================================
+# GitHub Actions Workflow: Matrix Artifacts and Artifact Merging
+# File Location: .github/workflows/matrix-artifacts.yml
+# ==============================================================================
+
+# 'name': Workflow title displayed in the GitHub Actions tab of the repository
+name: Matrix Artifacts Example
+
+# 'on': Defines the events that trigger this workflow
+on:
+  # Trigger 1: Automatically execute on push to 'main' or 'development'
+  push:
+    branches:
+      - main
+      - development
+
+  # Trigger 2: Automatically execute on Pull Requests targeting 'main' or 'development'
+  pull_request:
+    branches:
+      - main
+      - development
+
+  # Trigger 3: Allow manual workflow execution directly from GitHub Actions web UI
+  workflow_dispatch:
+
+# 'jobs': Groups all matrix and artifact merging demonstration jobs
+jobs:
+
+  # ============================================================================
+  # 1. EXAMPLE 1: MATRIX BUILD JOBS GENERATING SEPARATE ARTIFACTS
+  # Executes tests across multiple Node.js versions (20, 22, 24).
+  # Each matrix job creates a separate build report and uploads an artifact with
+  # a UNIQUE name: 'node-report-${{ matrix.node-version }}'.
+  # ============================================================================
+  build:
+    name: Build with Node.js ${{ matrix.node-version }}
+    runs-on: ubuntu-latest
+
+    # 'strategy': Controls matrix job multiplication and fault tolerance
+    strategy:
+      # 'fail-fast: false': If Node 20 fails, continue running Node 22 and 24
+      fail-fast: false
+
+      matrix:
+        # Generates 3 parallel jobs: Node.js 20, 22, and 24
+        node-version: [20, 22, 24]
+
+    # Application files (package.json, lockfile, sample/) reside at repository root
+    defaults:
+      run:
+        working-directory: .
+
+    steps:
+      # Step 1: Download repository source code
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      # Step 2: Configure the active Node.js version from the matrix
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      # Step 3: Clean install project dependencies
+      - name: Install Dependencies
+        run: |
+          npm ci
+
+      # Step 4: Execute existing sample application unit tests
+      - name: Run Tests
+        run: |
+          echo "Executing test suite on Node.js ${{ matrix.node-version }}..."
+          npm test
+
+      # Step 5: Generate a distinct report file for this matrix job
+      # Notice: The file name also includes the matrix variable to prevent collisions
+      - name: Generate Build Report
+        run: |
+          mkdir -p matrix-reports
+          echo "==========================================" > matrix-reports/report-${{ matrix.node-version }}.txt
+          echo "Matrix Job: Node.js ${{ matrix.node-version }}" >> matrix-reports/report-${{ matrix.node-version }}.txt
+          echo "Runner OS:  ${{ runner.os }}" >> matrix-reports/report-${{ matrix.node-version }}.txt
+          echo "Commit SHA: ${{ github.sha }}" >> matrix-reports/report-${{ matrix.node-version }}.txt
+          echo "Timestamp:  $(date -u)" >> matrix-reports/report-${{ matrix.node-version }}.txt
+          echo "Build Status: Successful" >> matrix-reports/report-${{ matrix.node-version }}.txt
+          echo "==========================================" >> matrix-reports/report-${{ matrix.node-version }}.txt
+          echo "Generated report file for Node.js ${{ matrix.node-version }}"
+
+      # Step 6: Upload uniquely named artifact per matrix job
+      # Crucial: Artifact name MUST be unique per matrix combination!
+      - name: Upload Matrix Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          # Dynamic name incorporating matrix variable to avoid name conflicts
+          name: node-report-${{ matrix.node-version }}
+
+          # Path to the specific report generated in this job
+          path: matrix-reports/report-${{ matrix.node-version }}.txt
+
+          # Retain artifact in GitHub storage for 7 days
+          retention-days: 7
+
+          # Fail job immediately if report file is missing
+          if-no-files-found: error
+
+  # ============================================================================
+  # 2. EXAMPLE 2: DOWNLOAD ALL MATRIX ARTIFACTS SEPARATELY
+  # Demonstrates downloading multiple artifacts matching a pattern ('node-report-*').
+  # By default ('merge-multiple: false'), actions/download-artifact extracts each
+  # artifact into its own subdirectory named after the artifact.
+  # ============================================================================
+  download-separate:
+    name: Download Separate Artifacts
+    runs-on: ubuntu-latest
+
+    # Ensure all matrix build jobs finish uploading before downloading
+    needs: build
+
+    steps:
+      # Step 1: Download matching artifacts into separate subdirectories
+      - name: Download All Matrix Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          # Wildcard pattern matches: node-report-20, node-report-22, node-report-24
+          pattern: node-report-*
+
+          # Destination directory on the runner
+          path: separate-artifacts/
+
+      # Step 2: Inspect recursive directory structure created by download-artifact
+      - name: Display Separate Artifacts
+        run: |
+          echo "=== Downloaded Separate Artifacts Directory Structure ==="
+          ls -R separate-artifacts/
+
+  # ============================================================================
+  # 3. EXAMPLE 3: MERGE MATRIX ARTIFACTS INTO ONE DIRECTORY
+  # Demonstrates 'merge-multiple: true' which downloads the contents of all
+  # matching artifacts and places all files into a single unified directory.
+  # Then, uploads the consolidated directory as a single unified artifact.
+  # ============================================================================
+  merge-artifacts:
+    name: Merge Matrix Artifacts
+    runs-on: ubuntu-latest
+
+    # Wait until all matrix build combinations finish
+    needs: build
+
+    steps:
+      # Step 1: Download all matching artifacts and merge files into one folder
+      - name: Merge All Matrix Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          # Select all artifacts uploaded by matrix jobs
+          pattern: node-report-*
+
+          # 'merge-multiple: true': Flattens artifact subfolders into one common directory
+          merge-multiple: true
+
+          # Destination directory for all merged files
+          path: merged-reports/
+
+      # Step 2: List all merged files in the destination directory
+      - name: Display Merged Artifacts
+        run: |
+          echo "=== Merged Artifact Files in merged-reports/ ==="
+          ls -la merged-reports/
+
+      # Step 3: Loop through and read the contents of every merged report file
+      - name: Read Merged Reports
+        run: |
+          echo "=== Reading Content of All Merged Report Files ==="
+          for file in merged-reports/*.txt; do
+            echo "----------------------------------------"
+            echo "Inspecting File: $file"
+            cat "$file"
+          done
+
+      # Step 4: Upload the unified folder as a single combined artifact
+      # Downstream jobs or users can now download ONE archive instead of 3 separate ones!
+      - name: Upload Merged Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: all-node-reports
+          path: merged-reports/
+          retention-days: 7
+          if-no-files-found: error
+
+  # ============================================================================
+  # 4. EXAMPLE 4: DOWNLOAD AND CONSUME THE FINAL MERGED ARTIFACT
+  # Demonstrates a downstream reporting or deployment stage that consumes the
+  # single merged artifact ('all-node-reports') produced by 'merge-artifacts'.
+  # ============================================================================
+  final-report:
+    name: Final Merged Report
+    runs-on: ubuntu-latest
+
+    # Waits for the merge-artifacts job to upload the consolidated package
+    needs: merge-artifacts
+
+    steps:
+      # Step 1: Download single merged artifact by exact name
+      - name: Download Final Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: all-node-reports
+          path: final-reports/
+
+      # Step 2: Inspect final reports directory
+      - name: Display Final Reports
+        run: |
+          echo "=== Final Merged Reports Directory ==="
+          ls -la final-reports/
+
+      # Step 3: Display summary of all reports
+      - name: Read Final Reports
+        run: |
+          echo "=== Complete Test Run Summary across all Node.js Versions ==="
+          for file in final-reports/*.txt; do
+            echo "----------------------------------------"
+            cat "$file"
+          done
+          echo "=========================================="
+          echo "All matrix versions verified successfully."
+
+  # ============================================================================
+  # 5. EXAMPLE 5: MULTI-DIMENSIONAL MATRIX ARTIFACT DEMONSTRATION
+  # Demonstrates artifact naming for multi-dimensional matrices (OS x Version).
+  # 2 Node Versions x 2 Operating Systems = 4 Combinations.
+  # Shows how to construct composite unique artifact names.
+  # ============================================================================
+  multi-dimension-matrix:
+    name: Multi-Dim Node ${{ matrix.node-version }} on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: [20, 22]
+        os: [ubuntu-latest, windows-latest]
+
+    defaults:
+      run:
+        working-directory: .
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Generate Multi-Dimension Report
+        shell: bash
+        run: |
+          mkdir -p dim-reports
+          echo "OS: ${{ matrix.os }}" > dim-reports/report-${{ matrix.os }}-node-${{ matrix.node-version }}.txt
+          echo "Node: ${{ matrix.node-version }}" >> dim-reports/report-${{ matrix.os }}-node-${{ matrix.node-version }}.txt
+          echo "Composite Matrix Verification Successful" >> dim-reports/report-${{ matrix.os }}-node-${{ matrix.node-version }}.txt
+
+      # Upload uniquely named artifact combining BOTH matrix variables
+      - name: Upload Multi-Dimension Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: report-${{ matrix.os }}-node-${{ matrix.node-version }}
+          path: dim-reports/report-${{ matrix.os }}-node-${{ matrix.node-version }}.txt
+          retention-days: 7
+          if-no-files-found: error
+
+
+# Matrix Artifacts and Artifact Merging Explained
+# A. What are Matrix Artifacts?
+
+# When a job uses a strategy.matrix, GitHub Actions multiplies that job into multiple independent executions running in parallel on separate virtual runners.
+
+# Each runner produces its own outputs (e.g., test summaries, coverage XMLs, compiled binaries). Storing each matrix job's files using actions/upload-artifact@v4 results in Matrix Artifacts.
+
+# text
+# build (Node.js 20)  ───>  Uploads: node-report-20 (contains report-20.txt)
+# build (Node.js 22)  ───>  Uploads: node-report-22 (contains report-22.txt)
+# build (Node.js 24)  ───>  Uploads: node-report-24 (contains report-24.txt)
+# B. Why Unique Artifact Names Are Mandatory
+
+# In GitHub Actions upload-artifact@v4, artifact names within a workflow run must be unique.
+
+# If two parallel matrix jobs both try to upload with name: build-report, the second job to upload will fail with an error (or overwrite the first if overwrite: true is set, losing data).
+# The Solution: Always interpolate matrix parameters into the artifact name:
+# yaml
+# name: node-report-${{ matrix.node-version }}
+# C. Multi-Dimensional Matrix Naming
+
+# When using multi-dimensional matrices (e.g. 
+# 2
+#  Node versions
+# ×
+# 2
+#  Operating Systems
+# =
+# 4
+#  jobs
+# 2 Node versions×2 Operating Systems=4 jobs), combine all dimensions into the artifact name:
+
+# yaml
+# name: report-${{ matrix.os }}-node-${{ matrix.node-version }}
+
+# This produces 4 distinct, collision-free artifacts:
+
+# report-ubuntu-latest-node-20
+# report-windows-latest-node-20
+# report-ubuntu-latest-node-22
+# report-windows-latest-node-22
+# 4. Separate Downloading vs. Artifact Merging
+
+# When downloading multiple artifacts produced by a matrix using a pattern (e.g., pattern: node-report-*), actions/download-artifact@v4 offers two modes:
+
+# Mode 1: Separate Directories (merge-multiple: false or omitted)
+# yaml
+# - uses: actions/download-artifact@v4
+#   with:
+#     pattern: node-report-*
+#     path: separate-artifacts/
+
+# GitHub Actions creates a subdirectory for each artifact named after that artifact:
+
+# text
+# separate-artifacts/
+# ├── node-report-20/
+# │   └── report-20.txt
+# ├── node-report-22/
+# │   └── report-22.txt
+# └── node-report-24/
+#     └── report-24.txt
+# Mode 2: Merged Directory (merge-multiple: true)
+# yaml
+# - uses: actions/download-artifact@v4
+#   with:
+#     pattern: node-report-*
+#     merge-multiple: true
+#     path: merged-reports/
+
+# GitHub Actions strips the artifact name subfolders and extracts all files directly into merged-reports/:
+
+# text
+# merged-reports/
+# ├── report-20.txt
+# ├── report-22.txt
+# └── report-24.txt
+
+# WARNING
+
+# File Collision Hazard with merge-multiple: true:
+# merge-multiple: true merges files into a common folder; it does NOT merge the text inside files. If every matrix job names its report report.txt, merging them causes one file to overwrite another! Always give files unique names at generation time (e.g., report-${{ matrix.node-version }}.txt).
+
+# 5. Detailed Comparison Table
+# Feature	Separate Artifacts (download-separate)	Merged Artifacts (merge-artifacts)
+# Download Selector	pattern: node-report-*	pattern: node-report-*
+# Merge Option	merge-multiple: false (or omitted)	merge-multiple: true
+# Directory Layout	Nested subfolder for each artifact name	Flat directory containing all downloaded files
+# File Organization	Isolated by producing matrix job	Combined side-by-side
+# Overwriting Risk	None (different folders)	High if files have identical filenames
+# Typical Use Case	Inspecting platform-specific logs separately	Aggregating test reports, coverage, or matrices into a single release package
+# 6. Answers to Core Concepts
+# What are Matrix Artifacts?
+# Artifacts generated across parallel executions of a matrix job, each representing the output of a specific combination.
+# Why do we use artifacts with matrix jobs?
+# To preserve test results, build packages, or compiler logs across all tested operating systems and runtime versions.
+# How does GitHub Actions generate matrix jobs?
+# It calculates the Cartesian product of all provided matrix arrays and spins up an isolated runner for each combination.
+# Why do we need unique artifact names?
+# Because GitHub Actions artifact storage requires a unique name per artifact in a workflow run.
+# What happens if multiple matrix jobs upload with the same name?
+# With actions/upload-artifact@v4, the second job fails with an error indicating an artifact with that name already exists.
+# What is actions/upload-artifact@v4?
+# The official action that packages specified files or directories into a ZIP archive and saves them to GitHub Actions storage.
+# What is actions/download-artifact@v4?
+# The official action that downloads and extracts previously uploaded artifacts onto the runner filesystem.
+# What is the purpose of pattern?
+# A glob matching string (e.g. node-report-*) allowing downstream jobs to select a collection of related artifacts at once.
+# What is the purpose of merge-multiple?
+# A boolean parameter that unpacks all matching artifacts into a single unified directory instead of creating per-artifact subfolders.
+# What is the difference between separate downloading and merging?
+# Separate downloading retains artifact subdirectories; merging puts all files into one shared folder.
+# What is the purpose of needs?
+# needs: build ensures that all matrix instances of the build job finish successfully before the download step executes.
+# Can multiple matrix jobs upload artifacts simultaneously?
+# Yes, as long as each job uploads under a unique name.
+# Can one artifact be downloaded by multiple jobs?
+# Yes. Multiple downstream jobs can download the exact same artifact as many times as needed.
+# What happens if one matrix job fails?
+# If fail-fast: false is configured, remaining matrix jobs continue to run. Downstream jobs using needs: build will be skipped unless configured with if: always() or if: !cancelled().
+# 7. Workflow Execution Architecture
+# 8. Step-by-Step UI Verification & Testing Guide
+# Verify Files on Disk:
+# bash
+# git status
+# Commit and Push:
+# bash
+# git add .github/workflows/matrix-artifacts.yml
+# git commit -m "ci: add matrix artifacts and merging demonstration workflow"
+# git push origin main
+# Trigger Workflow Manually:
+# In GitHub, navigate to the Actions tab.
+# Select Matrix Artifacts Example from the left-hand sidebar.
+# Click Run workflow 
+# →
+# → choose branch main 
+# →
+# → click Run workflow.
+# Observe the Matrix Execution:
+# In the run graph, notice the build job expands into 3 sub-jobs:
+# Build with Node.js 20
+# Build with Node.js 22
+# Build with Node.js 24
+# Notice multi-dimension-matrix expands into 4 sub-jobs.
+# Inspect the download-separate Logs:
+# Expand Display Separate Artifacts.
+# Verify the subfolders node-report-20/, node-report-22/, and node-report-24/.
+# Inspect the merge-artifacts Logs:
+# Expand Display Merged Artifacts.
+# Verify all 3 files (report-20.txt, report-22.txt, report-24.txt) sit directly inside merged-reports/.
+# Inspect the final-report Logs:
+# Verify the downstream job downloaded all-node-reports and printed the aggregated contents of all matrix reports.
+# Download from Summary:
+# Go to the workflow run Summary page.
+# Scroll to Artifacts to see individual matrix artifacts as well as the consolidated all-node-reports archive.
