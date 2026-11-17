@@ -58,81 +58,81 @@ jobs:
       deploy_token: ${{ secrets.DEPLOY_TOKEN }}
 
 
-What is a Reusable Workflow?
+# What is a Reusable Workflow?
 
-In continuous integration and deployment (CI/CD), software teams frequently repeat the same deployment, testing, and security scanning routines across multiple repositories and workflows.
+# In continuous integration and deployment (CI/CD), software teams frequently repeat the same deployment, testing, and security scanning routines across multiple repositories and workflows.
 
-Instead of copying and pasting identical YAML code, GitHub Actions allows you to treat a workflow like a reusable function:
+# Instead of copying and pasting identical YAML code, GitHub Actions allows you to treat a workflow like a reusable function:
 
-Callee Workflow (Reusable): Defines what tasks to execute and declares which parameters (inputs) and credentials (secrets) it accepts using the workflow_call trigger.
-Caller Workflow (Consumer): Invokes the callee workflow using the uses keyword at the job level and passes runtime arguments using with: and secrets:.
-2. Callee Workflow Implementation (reusable-callee.yml)
+# Callee Workflow (Reusable): Defines what tasks to execute and declares which parameters (inputs) and credentials (secrets) it accepts using the workflow_call trigger.
+# Caller Workflow (Consumer): Invokes the callee workflow using the uses keyword at the job level and passes runtime arguments using with: and secrets:.
+# 2. Callee Workflow Implementation (reusable-callee.yml)
 
-The callee defines the reusable logic, required inputs, and the runner environment.
+# The callee defines the reusable logic, required inputs, and the runner environment.
 
-yaml
-# ==============================================================================
-# GitHub Actions Reusable Workflow (Callee Workflow)
-# File Location: .github/workflows/reusable-callee.yml
-# ==============================================================================
-# 'name': Title of the reusable workflow shown in run details
-name: Reusable Callee Workflow
-# 'on': Defines the triggers that activate this workflow.
-# 'workflow_call' is the specific trigger that marks this workflow as REUSABLE,
-# allowing other workflows (callers) to invoke it like a function.
-on:
-  workflow_call:
-    # 'inputs': Parameters expected from the caller workflow
-    inputs:
-      app_name:
-        description: "Name of the application being processed"
-        required: true
-        type: string
-      environment:
-        description: "Deployment or execution environment (e.g., Development, Staging, Production)"
-        required: true
-        type: string
-        default: "Development"
-    # 'secrets': Optional secure credentials passed from the caller workflow
-    secrets:
-      deploy_token:
-        description: "Optional deployment or API secret token"
-        required: false
-# 'jobs': The execution logic of the reusable workflow
-# NOTE: The callee workflow defines its own runner ('runs-on') and 'steps'.
-jobs:
-  run-callee-tasks:
-    name: Execute Callee Job
-    runs-on: ubuntu-latest
-    steps:
-      # Step 1: Log workflow startup banner
-      - name: Workflow Start Message
-        run: |
-          echo "=========================================="
-          echo "Reusable workflow started!"
-          echo "=========================================="
-      # Step 2: Access and print input parameters
-      # Inputs are referenced via the 'inputs' context: ${{ inputs.<input_name> }}
-      - name: Display Application and Environment Information
-        run: |
-          echo "Application Name: ${{ inputs.app_name }}"
-          echo "Environment:      ${{ inputs.environment }}"
-      # Step 3: Optional safe secret inspection
-      # Secrets are referenced via the 'secrets' context: ${{ secrets.<secret_name> }}
-      # Security Best Practice: Never echo the raw secret value to the console!
-      - name: Verify Optional Secret Reception
-        run: |
-          if [ -n "${{ secrets.deploy_token }}" ]; then
-            echo "Secret Status: Optional 'deploy_token' received securely."
-          else
-            echo "Secret Status: No 'deploy_token' supplied by caller (standard mode)."
-          fi
-      # Step 4: Log workflow completion banner
-      - name: Workflow Completion Message
-        run: |
-          echo "=========================================="
-          echo "Reusable workflow completed successfully!"
-          echo "=========================================="
+# yaml
+# # ==============================================================================
+# # GitHub Actions Reusable Workflow (Callee Workflow)
+# # File Location: .github/workflows/reusable-callee.yml
+# # ==============================================================================
+# # 'name': Title of the reusable workflow shown in run details
+# name: Reusable Callee Workflow
+# # 'on': Defines the triggers that activate this workflow.
+# # 'workflow_call' is the specific trigger that marks this workflow as REUSABLE,
+# # allowing other workflows (callers) to invoke it like a function.
+# on:
+#   workflow_call:
+#     # 'inputs': Parameters expected from the caller workflow
+#     inputs:
+#       app_name:
+#         description: "Name of the application being processed"
+#         required: true
+#         type: string
+#       environment:
+#         description: "Deployment or execution environment (e.g., Development, Staging, Production)"
+#         required: true
+#         type: string
+#         default: "Development"
+#     # 'secrets': Optional secure credentials passed from the caller workflow
+#     secrets:
+#       deploy_token:
+#         description: "Optional deployment or API secret token"
+#         required: false
+# # 'jobs': The execution logic of the reusable workflow
+# # NOTE: The callee workflow defines its own runner ('runs-on') and 'steps'.
+# jobs:
+#   run-callee-tasks:
+#     name: Execute Callee Job
+#     runs-on: ubuntu-latest
+#     steps:
+#       # Step 1: Log workflow startup banner
+#       - name: Workflow Start Message
+#         run: |
+#           echo "=========================================="
+#           echo "Reusable workflow started!"
+#           echo "=========================================="
+#       # Step 2: Access and print input parameters
+#       # Inputs are referenced via the 'inputs' context: ${{ inputs.<input_name> }}
+#       - name: Display Application and Environment Information
+#         run: |
+#           echo "Application Name: ${{ inputs.app_name }}"
+#           echo "Environment:      ${{ inputs.environment }}"
+#       # Step 3: Optional safe secret inspection
+#       # Secrets are referenced via the 'secrets' context: ${{ secrets.<secret_name> }}
+#       # Security Best Practice: Never echo the raw secret value to the console!
+#       - name: Verify Optional Secret Reception
+#         run: |
+#           if [ -n "${{ secrets.deploy_token }}" ]; then
+#             echo "Secret Status: Optional 'deploy_token' received securely."
+#           else
+#             echo "Secret Status: No 'deploy_token' supplied by caller (standard mode)."
+#           fi
+#       # Step 4: Log workflow completion banner
+#       - name: Workflow Completion Message
+#         run: |
+#           echo "=========================================="
+#           echo "Reusable workflow completed successfully!"
+#           echo "=========================================="
 
 # 1. What is a Reusable Workflow?
 
