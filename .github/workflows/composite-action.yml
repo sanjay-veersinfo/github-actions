@@ -1,0 +1,55 @@
+# ==============================================================================
+# GitHub Actions Workflow: Composite Action Invocation Demonstration
+# File Location: .github/workflows/composite-action.yml
+# ==============================================================================
+
+# 'name': Title displayed in the GitHub Actions tab of the repository
+name: Composite Action Example
+
+# 'on': Defines the events that trigger this workflow
+on:
+  # Trigger 1: Allows manual execution from the GitHub Actions web UI with custom input
+  workflow_dispatch:
+    inputs:
+      username:
+        description: "Username to pass to the Composite Action"
+        required: false
+        default: "GitHub Actions"
+        type: string
+
+  # Trigger 2: Automatic execution on push to 'main' or 'development' branch
+  push:
+    branches:
+      - main
+      - development
+
+# 'jobs': Groups all jobs within this workflow
+jobs:
+
+  # ============================================================================
+  # JOB: Execute the local Composite Action
+  # ============================================================================
+  run-composite-action:
+    name: Run Composite Action Job
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Checkout repository files to the runner.
+      # CRITICAL RULE: Because the Composite Action is located locally in this repository,
+      # the runner MUST check out the code first before it can locate './.github/actions/greeting-action'.
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      # Step 2: Invoke the local Composite Action using 'uses' at the step level.
+      # 'uses': Points to the directory containing 'action.yml'.
+      # 'with': Passes inputs declared in the action's inputs definition.
+      - name: Execute Greeting Composite Action
+        uses: ./.github/actions/greeting-action
+        with:
+          username: ${{ inputs.username || 'GitHub Actions' }}
+
+      # Step 3: Verify workflow continuation after composite action completes
+      - name: Workflow Post-Execution Summary
+        run: |
+          echo "Caller workflow received success signal from Composite Action."
+          echo "All composite steps completed without errors."

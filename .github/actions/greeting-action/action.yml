@@ -1,0 +1,57 @@
+# ==============================================================================
+# GitHub Actions Custom Composite Action
+# File Location: .github/actions/greeting-action/action.yml
+# ==============================================================================
+
+# 'name': The display title of the action shown in workflow logs
+name: "Greeting Composite Action"
+
+# 'description': Detailed summary of what this custom composite action accomplishes
+description: "A reusable composite action that greets a user, logs contextual information, and demonstrates multi-step composite action execution."
+
+# 'inputs': Declares the input parameters accepted by this composite action
+inputs:
+  username:
+    description: "The name of the user or system to greet"
+    required: false
+    default: "GitHub Actions"
+
+# 'runs': Defines the execution engine and internal steps of the action
+# 'using: composite' designates this as a composite action, bundling multiple steps
+runs:
+  using: "composite"
+
+  steps:
+    # --------------------------------------------------------------------------
+    # Step 1: Greeting
+    # Accesses input via ${{ inputs.username }} and prints a personalized greeting.
+    # CRITICAL: Every 'run' step in a composite action MUST specify 'shell: bash'.
+    # --------------------------------------------------------------------------
+    - name: Print Greeting Message
+      shell: bash
+      run: |
+        echo "=========================================="
+        echo "Hello, ${{ inputs.username }}!"
+        echo "=========================================="
+
+    # --------------------------------------------------------------------------
+    # Step 2: Display Information
+    # Outputs educational context regarding composite action execution.
+    # --------------------------------------------------------------------------
+    - name: Display Action Information
+      shell: bash
+      run: |
+        echo "Welcome to Composite Actions."
+        echo "Location: .github/actions/greeting-action/action.yml"
+        echo "Composite actions combine multiple shell commands into a single reusable step."
+
+    # --------------------------------------------------------------------------
+    # Step 3: Completion
+    # Confirms that all internal steps of the composite action finished cleanly.
+    # --------------------------------------------------------------------------
+    - name: Print Completion Message
+      shell: bash
+      run: |
+        echo "=========================================="
+        echo "Composite Action executed successfully!"
+        echo "=========================================="
