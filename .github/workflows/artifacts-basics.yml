@@ -1,0 +1,482 @@
+# ==============================================================================
+# GitHub Actions Workflow: Artifacts Complete Basics Demonstration
+# File Location: .github/workflows/artifacts-basics.yml
+# ==============================================================================
+
+# 'name': Title displayed in the GitHub Actions tab of the repository
+name: GitHub Actions Artifacts Basics
+
+# 'on': Defines the trigger events for executing this workflow
+on:
+  # Trigger 1: Code push to 'main' or 'development' branch
+  push:
+    branches:
+      - main
+      - development
+
+  # Trigger 2: Pull Request targeting 'main' or 'development' branch
+  pull_request:
+    branches:
+      - main
+      - development
+
+  # Trigger 3: Manual execution from the GitHub web UI
+  workflow_dispatch:
+
+# 'jobs': Groups all artifact demonstration jobs
+jobs:
+
+  # ============================================================================
+  # 1. EXAMPLE 1: GENERATE AND UPLOAD A SINGLE FILE ARTIFACT
+  # Demonstrates creating a report file dynamically and uploading it using
+  # actions/upload-artifact@v4 with a custom retention period.
+  # ============================================================================
+  upload-artifact:
+    name: Generate and Upload Artifact
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Checkout repository files to runner
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      # Step 2: Create a dedicated output directory
+      - name: Create Output Directory
+        run: |
+          mkdir -p output
+
+      # Step 3: Dynamically generate a sample report file
+      - name: Generate Report
+        run: |
+          echo "=== GitHub Actions Artifact Example ===" > output/report.txt
+          echo "Generated At: $(date -u)" >> output/report.txt
+          echo "Commit SHA:   ${{ github.sha }}" >> output/report.txt
+          echo "Branch:       ${{ github.ref_name }}" >> output/report.txt
+          echo "Build Status: Successful" >> output/report.txt
+          echo "Artifact generation complete."
+
+      # Step 4: Upload the single file as a workflow artifact
+      # 'actions/upload-artifact@v4' archives the specified path into a ZIP file
+      # stored securely in GitHub Actions storage.
+      - name: Upload Report Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          # 'name': The unique artifact identifier visible in GitHub UI
+          name: sample-report
+
+          # 'path': File or folder to upload
+          path: output/report.txt
+
+          # 'retention-days': How many days GitHub retains this artifact (1 to 90)
+          retention-days: 7
+
+          # 'compression-level': ZIP compression level from 0 (none) to 9 (maximum). Default is 6.
+          compression-level: 6
+
+          # 'overwrite': If an artifact with this name exists, replace it
+          overwrite: true
+
+  # ============================================================================
+  # 2. EXAMPLE 2 & 3: UPLOAD MULTIPLE FILES, DIRECTORIES, AND PATH PATTERNS
+  # Demonstrates uploading entire directories, multiple distinct directories,
+  # and wildcard matching patterns in a single artifact.
+  # ============================================================================
+  upload-multiple-files:
+    name: Upload Multiple Files & Paths
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Create sample reports and logs directories with test files
+      - name: Create Multiple Files & Folders
+        run: |
+          mkdir -p reports
+          mkdir -p logs
+          echo "Build Stage: SUCCESS" > reports/build.txt
+          echo "Unit Tests: 8 passed, 0 failed" > reports/test.txt
+          echo "Deployment Target: staging" > reports/deployment.txt
+          echo "[INFO] Application initialized successfully" > logs/app.log
+          echo "Release Note: v1.0.0-ci" > release-notes.txt
+
+      # Step 2: Upload entire 'reports/' directory as one artifact
+      - name: Upload Reports Directory
+        uses: actions/upload-artifact@v4
+        with:
+          name: application-reports
+          path: reports/
+          retention-days: 7
+
+      # Step 3: Upload multiple paths using multiline YAML syntax and wildcards
+      # Demonstrates combining directories, log files, and text files.
+      - name: Upload Multiple Paths and Wildcards
+        uses: actions/upload-artifact@v4
+        with:
+          name: complete-reports
+          path: |
+            reports/
+            logs/
+            *.txt
+          # 'if-no-files-found': Behavior if pattern matches nothing: 'warn', 'error', or 'ignore'
+          if-no-files-found: warn
+          retention-days: 7
+
+  # ============================================================================
+  # 3. EXAMPLE 4: DOWNLOAD AN ARTIFACT IN THE SAME WORKFLOW
+  # Demonstrates downloading an artifact uploaded by a previous job.
+  # Requires 'needs: upload-artifact' so GitHub Actions waits for the upload!
+  # ============================================================================
+  download-artifact:
+    name: Download Artifact
+    runs-on: ubuntu-latest
+
+    # Crucial: Wait until 'upload-artifact' finishes uploading
+    needs: upload-artifact
+
+    steps:
+      # Step 1: Download specific artifact by name into a custom directory
+      - name: Download Report
+        uses: actions/download-artifact@v4
+        with:
+          # 'name': Must match the name provided during upload-artifact
+          name: sample-report
+
+          # 'path': Destination directory on the runner to extract the artifact
+          path: downloaded-report/
+
+      # Step 2: Read and display the extracted report contents
+      - name: Display Report
+        run: |
+          echo "=== Downloaded Artifact Contents ==="
+          cat downloaded-report/report.txt
+
+  # ============================================================================
+  # 4. EXAMPLE 5: PRACTICAL MULTI-JOB CI/CD PIPELINE (BUILD -> TEST -> DEPLOY)
+  # Demonstrates how the 'build' job creates a build package artifact, and both
+  # the 'test' and 'deploy' jobs download and consume that exact artifact.
+  # ============================================================================
+
+  # Stage 1: Build Application
+  build:
+    name: Build Application
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: .
+
+    steps:
+      # Step 1: Checkout repository code
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      # Step 2: Setup Node.js runtime
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # Step 3: Install clean dependencies
+      - name: Install Dependencies
+        run: |
+          npm ci
+
+      # Step 4: Run build command if configured in package.json
+      - name: Run Build
+        run: |
+          npm run build --if-present
+
+      # Step 5: Generate build package information and metadata
+      - name: Create Build Information
+        run: |
+          mkdir -p build-output
+          echo "Application: github-actions-node-ci" > build-output/build-info.txt
+          echo "Build Timestamp: $(date -u)" >> build-output/build-info.txt
+          echo "Node Version: $(node -v)" >> build-output/build-info.txt
+          echo "Status: Package Ready for Verification" >> build-output/build-info.txt
+
+      # Step 6: Upload build output artifact for downstream jobs
+      - name: Upload Build Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: application-build
+          path: build-output/
+          if-no-files-found: warn
+          retention-days: 7
+
+  # Stage 2: Test Application (Consumes build artifact and runs tests)
+  test:
+    name: Test Application
+    runs-on: ubuntu-latest
+
+    # Waits for the 'build' job to complete successfully
+    needs: build
+
+    defaults:
+      run:
+        working-directory: .
+
+    steps:
+      # Step 1: Checkout source code to run unit tests
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      # Step 2: Setup Node.js runtime
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # Step 3: Install dependencies
+      - name: Install Dependencies
+        run: |
+          npm ci
+
+      # Step 4: Download build artifact produced by the 'build' job
+      - name: Download Build Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: application-build
+          path: downloaded-build/
+
+      # Step 5: Inspect downloaded build metadata
+      - name: Display Build Files
+        run: |
+          echo "Inspecting files downloaded from 'application-build':"
+          ls -la downloaded-build/
+          cat downloaded-build/build-info.txt
+
+      # Step 6: Execute existing application tests
+      - name: Run Tests
+        run: |
+          echo "Executing test suite..."
+          npm test
+
+  # Stage 3: Deploy Application Preparation (Consumes build artifact)
+  deploy:
+    name: Deployment Preparation
+    runs-on: ubuntu-latest
+
+    # Waits for BOTH 'build' and 'test' jobs to succeed
+    needs: [build, test]
+
+    steps:
+      # Step 1: Download the build artifact verified by the test job
+      - name: Download Build Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: application-build
+          path: deployment-package/
+
+      # Step 2: Inspect files inside the deployment package
+      - name: Inspect Deployment Package
+        run: |
+          echo "=== Ready for Deployment ==="
+          ls -la deployment-package/
+          cat deployment-package/build-info.txt
+
+      # Step 3: Demonstration deployment message (no real credentials needed)
+      - name: Deployment Message
+        run: |
+          echo "Application artifact has been verified by tests and is ready for deployment!"
+
+  # ============================================================================
+  # 5. EXAMPLE 6: DOWNLOAD ALL ARTIFACTS IN A SINGLE STEP
+  # Demonstrates downloading every artifact produced by prior jobs into separate
+  # subdirectories by omitting the 'name' parameter in actions/download-artifact.
+  # ============================================================================
+  download-all-artifacts:
+    name: Download All Artifacts
+    runs-on: ubuntu-latest
+
+    # Waits for all jobs that produce artifacts to complete
+    needs: [build, upload-artifact, upload-multiple-files]
+
+    steps:
+      # Omitting 'name' instructs download-artifact@v4 to download ALL artifacts
+      # Each artifact is automatically placed in its own folder inside 'all-artifacts/'
+      - name: Download All Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: all-artifacts/
+
+      # Recursively list all downloaded artifact directories and their contents
+      - name: Display All Artifacts
+        run: |
+          echo "=== Listing All Downloaded Artifacts ==="
+          ls -R all-artifacts/
+
+# 3. Core Artifact Concepts Explained
+# A. What are Artifacts and Why Do We Need Them?
+
+# Each job in GitHub Actions runs on a completely separate, ephemeral virtual machine runner (ubuntu-latest, windows-latest, or macos-latest). When a job finishes, its entire filesystem is destroyed.
+
+# Files created in Job A (such as compiled .js files, test coverage summaries, or deployment packages) do not exist on the runner for Job B.
+
+# Artifacts are the official mechanism to persist files beyond the lifecycle of a single job. When you upload an artifact:
+
+# GitHub compresses the target files into an encrypted ZIP file.
+# The ZIP file is uploaded to GitHub's high-availability object store.
+# Downstream jobs in the same workflow run can download and extract that ZIP.
+# Users can download the ZIP directly from the GitHub web UI for up to 90 days.
+# 4. Detailed Configuration Scenarios
+# Scenario 1: Uploading a Single File
+# yaml
+# - name: Upload Report Artifact
+#   uses: actions/upload-artifact@v4
+#   with:
+#     name: sample-report
+#     path: output/report.txt
+#     retention-days: 7
+# Only output/report.txt is packaged.
+# The resulting artifact is named sample-report.
+# Scenario 2: Uploading an Entire Directory
+# yaml
+# - name: Upload Reports Directory
+#   uses: actions/upload-artifact@v4
+#   with:
+#     name: application-reports
+#     path: reports/
+# All files inside reports/ (build.txt, test.txt, deployment.txt) are bundled together into application-reports.zip.
+# Scenario 3: Multiple Paths & Wildcards
+# yaml
+# - name: Upload Multiple Paths and Wildcards
+#   uses: actions/upload-artifact@v4
+#   with:
+#     name: complete-reports
+#     path: |
+#       reports/
+#       logs/
+#       *.txt
+#     if-no-files-found: warn
+# Accepts multiline input.
+# Globs like *.txt find matching files at the workspace root.
+# if-no-files-found: warn prevents the job from failing if a non-essential log file wasn't created.
+# Scenario 4: Downstream Job Download Dependency
+# yaml
+# download-artifact:
+#   needs: upload-artifact
+#   steps:
+#     - uses: actions/download-artifact@v4
+#       with:
+#         name: sample-report
+#         path: downloaded-report/
+
+# IMPORTANT
+
+# The needs: upload-artifact keyword is mandatory. Without needs, both jobs would execute concurrently in parallel, causing the download step to crash with an error because the artifact does not exist yet.
+
+# Scenario 5: Downloading All Artifacts Simultaneously
+# yaml
+# - name: Download All Artifacts
+#   uses: actions/download-artifact@v4
+#   with:
+#     path: all-artifacts/
+
+# When name is omitted, actions/download-artifact@v4 automatically pulls every artifact generated by all completed jobs in the workflow run. It structures them cleanly into named subfolders:
+
+# text
+# all-artifacts/
+# ├── application-build/
+# │   └── build-info.txt
+# ├── application-reports/
+# │   ├── build.txt
+# │   ├── test.txt
+# │   └── deployment.txt
+# ├── complete-reports/
+# │   ├── logs/
+# │   ├── reports/
+# │   └── release-notes.txt
+# └── sample-report/
+#     └── report.txt
+# 5. Artifact Retention Rules
+
+# Artifact retention controls how long GitHub keeps your files before automatically deleting them to save storage:
+
+# yaml
+# retention-days: 7
+# Default: 90 days for public and private repositories (unless modified in repository settings).
+# Customizable Range: 1 to 90 days.
+# Organization / Enterprise Policy: A repository cannot set retention-days higher than the maximum limit enforced by organization or enterprise administrators.
+# Expiration: Once retention expires, GitHub automatically purges the artifact. Downstream runs can no longer access it, and download links in the UI are removed.
+# 6. Action Options Reference
+# actions/upload-artifact@v4
+# Parameter	Type	Default	Description
+# name	String	artifact	The name given to the uploaded artifact archive.
+# path	String	Required	File, directory, or wildcard pattern(s) to upload. Supports multiline entries.
+# retention-days	Number	Repo default	Number of days (1-90) before the artifact is automatically deleted.
+# if-no-files-found	String	warn	Action on missing files: warn, error (fails job), or ignore.
+# compression-level	Number	6	ZIP compression ratio from 0 (fastest / no compression) to 9 (smallest size).
+# overwrite	Boolean	false	Whether to replace an existing artifact with the same name.
+# actions/download-artifact@v4
+# Parameter	Type	Default	Description
+# name	String	Optional	Name of artifact to download. If omitted, downloads all artifacts.
+# path	String	.	Destination folder on the runner where files will be extracted.
+# pattern	String	Optional	Glob pattern used to match multiple artifact names (e.g. reports-*).
+# merge-multiple	Boolean	false	When downloading multiple artifacts, unpack them directly into the same folder.
+# github-token	String	github.token	Token used for authentication.
+# run-id	Number	Current run	Allows downloading artifacts from a specific previous workflow run.
+# 7. Comparison: Artifacts vs. Cache vs. Job Outputs
+# Feature	Artifacts (upload-artifact)	Cache (actions/cache)	Job Outputs ($GITHUB_OUTPUT)
+# Primary Purpose	Persisting build outputs, binaries, and test reports.	Reusing dependencies (e.g., ~/.npm) to speed up builds.	Passing small variables (e.g., version strings, flags).
+# Between Jobs (Same Run)	Yes (Using needs + download-artifact).	Not intended (caches save at end of job).	Yes (Referenced via ${{ needs.job.outputs }}).
+# Between Workflow Runs	Yes (Downloadable from UI while retained).	Yes (Key-based restoration across runs).	No (Discarded once workflow finishes).
+# Storage Mechanism	ZIP file in GitHub cloud object storage.	Compressed tarball in GitHub cache store.	Workflow runner memory / environment variables.
+# Downloadable in UI?	Yes (Direct link in Actions run summary).	No (Internal to runner).	No (Visible only in job logs).
+# Storage Limit	Included in GitHub account storage quota.	10 GB per repository (LRU eviction).	Small text limit (1 MB maximum).
+# 8. Practical Multi-Job CI/CD Execution Flow
+# build Job: Prepares application metadata and saves application-build.
+# test Job: Waits for build via needs: build, downloads the build package, and executes npm test.
+# deploy Job: Waits for both build and test via needs: [build, test], downloads the exact same build package verified by tests, and prepares deployment.
+# 9. Step-by-Step Testing & Verification Instructions
+
+# Follow these steps to test the workflow and download generated artifacts:
+
+# Verify Files on Disk: Confirm both workflow and test files exist:
+
+# bash
+# git status
+
+# Commit and Push:
+
+# bash
+# git add .github/workflows/artifacts-basics.yml
+# git commit -m "ci: add complete artifacts basics demonstration workflow"
+# git push origin main
+
+# Trigger Workflow Manually:
+
+# Open your repository on GitHub.
+# Click the Actions tab.
+# Select GitHub Actions Artifacts Basics from the left sidebar.
+# Click Run workflow 
+# →
+# → branch main 
+# →
+# → Run workflow.
+
+# Inspect Job Execution Logs:
+
+# Click the running workflow instance.
+# Select the upload-artifact job 
+# →
+# → expand Upload Report Artifact to see archive creation:
+# text
+# Starting artifact upload
+# With the provided key, container: sample-report
+# Total size of items being uploaded: ... bytes
+# Upload completed successfully!
+# Select the download-artifact job 
+# →
+# → expand Display Report to verify the report contents were read by a different runner.
+# Select test and deploy to observe both dependent jobs consuming application-build.
+# Select download-all-artifacts to observe all artifacts extracted into distinct directories.
+
+# Download Artifacts from GitHub UI:
+
+# Return to the Summary page of the workflow run.
+# Scroll down to the bottom Artifacts section:
+# sample-report
+# application-reports
+# complete-reports
+# application-build
+# Click any artifact name. Your browser downloads a .zip file.
+# Unzip it locally to inspect the files created inside the GitHub Actions virtual runner.
