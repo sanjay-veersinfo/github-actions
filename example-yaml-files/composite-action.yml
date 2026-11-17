@@ -1,0 +1,267 @@
+# ==============================================================================
+# GitHub Actions Workflow: Composite Action Invocation Demonstration
+# File Location: .github/workflows/composite-action.yml
+# ==============================================================================
+
+# 'name': Title displayed in the GitHub Actions tab of the repository
+name: Composite Action Example
+
+# 'on': Defines the events that trigger this workflow
+on:
+  # Trigger 1: Allows manual execution from the GitHub Actions web UI with custom input
+  workflow_dispatch:
+    inputs:
+      username:
+        description: "Username to pass to the Composite Action"
+        required: false
+        default: "GitHub Actions"
+        type: string
+
+  # Trigger 2: Automatic execution on push to 'main' or 'development' branch
+  push:
+    branches:
+      - main
+      - development
+
+# 'jobs': Groups all jobs within this workflow
+jobs:
+
+  # ============================================================================
+  # JOB: Execute the local Composite Action
+  # ============================================================================
+  run-composite-action:
+    name: Run Composite Action Job
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Checkout repository files to the runner.
+      # CRITICAL RULE: Because the Composite Action is located locally in this repository,
+      # the runner MUST check out the code first before it can locate './.github/actions/greeting-action'.
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      # Step 2: Invoke the local Composite Action using 'uses' at the step level.
+      # 'uses': Points to the directory containing 'action.yml'.
+      # 'with': Passes inputs declared in the action's inputs definition.
+      - name: Execute Greeting Composite Action
+        uses: ./.github/actions/greeting-action
+        with:
+          username: ${{ inputs.username || 'GitHub Actions' }}
+
+      # Step 3: Verify workflow continuation after composite action completes
+      - name: Workflow Post-Execution Summary
+        run: |
+          echo "Caller workflow received success signal from Composite Action."
+          echo "All composite steps completed without errors."
+
+
+# GitHub Actions Composite Action (Definition & Execution)
+
+# The custom Composite Action and its caller workflow have been created and verified at:
+
+# Custom Composite Action: 👉 .github/actions/greeting-action/action.yml
+# Caller Workflow: 👉 .github/workflows/composite-action.yml
+
+# (Synchronized reference copies are also preserved in example-yaml-files/greeting-action.yml and example-yaml-files/composite-action.yml)
+
+# 1. What is a Composite Action?
+
+# A Composite Action allows you to package multiple workflow steps (shell scripts, setup routines, third-party actions) into a single reusable action defined in a dedicated action.yml file.
+
+# Why Use a Composite Action?
+# Avoid Repetitive Steps: Instead of writing 10 lines of setup steps (e.g., install dependencies, configure CLI tools, run linters) in every job, bundle them into one composite action and invoke it with a single uses: step.
+# Pure YAML (No Docker or JavaScript required): Traditional custom actions require NodeJS or Docker containers. Composite actions run native shell scripts directly on the host runner.
+# Local or Public: Can live inside your repository (./.github/actions/<action-name>) or in a dedicated public repository for cross-team sharing.
+# 2. Composite Action Definition (action.yml)
+
+# The Composite Action is declared inside .github/actions/greeting-action/action.yml:
+
+# yaml
+# # ==============================================================================
+# # GitHub Actions Custom Composite Action
+# # File Location: .github/actions/greeting-action/action.yml
+# # ==============================================================================
+# # 'name': The display title of the action shown in workflow logs
+# name: "Greeting Composite Action"
+# # 'description': Detailed summary of what this custom composite action accomplishes
+# description: "A reusable composite action that greets a user, logs contextual information, and demonstrates multi-step composite action execution."
+# # 'inputs': Declares the input parameters accepted by this composite action
+# inputs:
+#   username:
+#     description: "The name of the user or system to greet"
+#     required: false
+#     default: "GitHub Actions"
+# # 'runs': Defines the execution engine and internal steps of the action
+# # 'using: composite' designates this as a composite action, bundling multiple steps
+# runs:
+#   using: "composite"
+#   steps:
+#     # --------------------------------------------------------------------------
+#     # Step 1: Greeting
+#     # Accesses input via ${{ inputs.username }} and prints a personalized greeting.
+#     # CRITICAL: Every 'run' step in a composite action MUST specify 'shell: bash'.
+#     # --------------------------------------------------------------------------
+#     - name: Print Greeting Message
+#       shell: bash
+#       run: |
+#         echo "=========================================="
+#         echo "Hello, ${{ inputs.username }}!"
+#         echo "=========================================="
+#     # --------------------------------------------------------------------------
+#     # Step 2: Display Information
+#     # Outputs educational context regarding composite action execution.
+#     # --------------------------------------------------------------------------
+#     - name: Display Action Information
+#       shell: bash
+#       run: |
+#         echo "Welcome to Composite Actions."
+#         echo "Location: .github/actions/greeting-action/action.yml"
+#         echo "Composite actions combine multiple shell commands into a single reusable step."
+#     # --------------------------------------------------------------------------
+#     # Step 3: Completion
+#     # Confirms that all internal steps of the composite action finished cleanly.
+#     # --------------------------------------------------------------------------
+#     - name: Print Completion Message
+#       shell: bash
+#       run: |
+#         echo "=========================================="
+#         echo "Composite Action executed successfully!"
+#         echo "=========================================="
+# 3. Caller Workflow Implementation (composite-action.yml)
+
+# The caller workflow executes on ubuntu-latest, checks out the repository, and invokes the local composite action inside steps: using uses: ./.github/actions/greeting-action.
+
+# yaml
+# # ==============================================================================
+# # GitHub Actions Workflow: Composite Action Invocation Demonstration
+# # File Location: .github/workflows/composite-action.yml
+# # ==============================================================================
+# # 'name': Title displayed in the GitHub Actions tab of the repository
+# name: Composite Action Example
+# # 'on': Defines the events that trigger this workflow
+# on:
+#   # Trigger 1: Allows manual execution from the GitHub Actions web UI with custom input
+#   workflow_dispatch:
+#     inputs:
+#       username:
+#         description: "Username to pass to the Composite Action"
+#         required: false
+#         default: "GitHub Actions"
+#         type: string
+#   # Trigger 2: Automatic execution on push to 'main' or 'development' branch
+#   push:
+#     branches:
+#       - main
+#       - development
+# # 'jobs': Groups all jobs within this workflow
+# jobs:
+#   # ============================================================================
+#   # JOB: Execute the local Composite Action
+#   # ============================================================================
+#   run-composite-action:
+#     name: Run Composite Action Job
+#     runs-on: ubuntu-latest
+#     steps:
+#       # Step 1: Checkout repository files to the runner.
+#       # CRITICAL RULE: Because the Composite Action is located locally in this repository,
+#       # the runner MUST check out the code first before it can locate './.github/actions/greeting-action'.
+#       - name: Checkout Repository
+#         uses: actions/checkout@v4
+#       # Step 2: Invoke the local Composite Action using 'uses' at the step level.
+#       # 'uses': Points to the directory containing 'action.yml'.
+#       # 'with': Passes inputs declared in the action's inputs definition.
+#       - name: Execute Greeting Composite Action
+#         uses: ./.github/actions/greeting-action
+#         with:
+#           username: ${{ inputs.username || 'GitHub Actions' }}
+#       # Step 3: Verify workflow continuation after composite action completes
+#       - name: Workflow Post-Execution Summary
+#         run: |
+#           echo "Caller workflow received success signal from Composite Action."
+#           echo "All composite steps completed without errors."
+# 4. Key Syntax & Operational Mechanics
+# A. runs: using: composite
+
+# Unlike JavaScript actions (using: node20) or Docker actions (using: docker), using: composite informs GitHub Actions that this action consists of a list of standard workflow steps.
+
+# B. Mandatory shell: bash
+
+# In standard workflows, shell is optional on Linux runners because it defaults to bash.
+# In Composite Actions, every run step MUST explicitly declare shell: (e.g., shell: bash or shell: pwsh). GitHub Actions enforces this because composite actions can execute across Linux, Windows, and macOS runners.
+
+# C. Mandatory actions/checkout@v4
+
+# Because this is a local action (./.github/actions/greeting-action), the runner cannot read action.yml until the workspace has been cloned onto the runner's disk via actions/checkout@v4.
+
+# 5. Composite Action vs. Reusable Workflow
+# Feature	Composite Action (action.yml)	Reusable Workflow (workflow_call)
+# File Location	Any folder (e.g. .github/actions/<name>/action.yml)	Must be in .github/workflows/<name>.yml
+# Invocation Level	Invoked inside steps: via uses:	Invoked at the job: level via uses:
+# Engine Keyword	runs: using: composite	on: workflow_call
+# Runner Scope	Runs inside the caller job's existing runner	Can define its own dedicated runner (runs-on)
+# Job Sharing	Shares the workspace, disk, and environment variables of the calling job	Runs in an isolated virtual machine runner
+# Primary Use Case	Packaging repetitive setup scripts, linters, or multi-step CLI operations within a job	Standardizing end-to-end CI/CD pipelines (e.g., full Build 
+# →
+# → Test 
+# →
+# → Deploy workflows)
+# When to choose which?
+# Choose a Composite Action when you need to package 3–5 common steps that run inside an existing job without switching machines or losing local disk files.
+# Choose a Reusable Workflow when you need to standardize entire pipelines with multiple jobs, matrices, and independent runners.
+# 6. Expected Execution Flow & Logs
+# Expected Log Output:
+# text
+# ==========================================
+# Hello, GitHub Actions!
+# ==========================================
+# Welcome to Composite Actions.
+# Location: .github/actions/greeting-action/action.yml
+# Composite actions combine multiple shell commands into a single reusable step.
+# ==========================================
+# Composite Action executed successfully!
+# ==========================================
+# Caller workflow received success signal from Composite Action.
+# All composite steps completed without errors.
+# 7. Common Pitfalls & Solutions
+
+# WARNING
+
+# Pitfall 1: Missing shell in Composite Steps
+# ❌ Error: run step missing shell
+# ✔ Fix: Every run step inside action.yml must explicitly specify shell: bash (or pwsh, sh, etc.).
+
+# CAUTION
+
+# Pitfall 2: Omitting actions/checkout@v4
+# ❌ Error: Action does not exist: ./.github/actions/greeting-action/action.yml
+# ✔ Fix: For local composite actions, always run actions/checkout@v4 as the first step so the action files exist on the runner.
+
+# IMPORTANT
+
+# Pitfall 3: Wrong Calling Location
+# ❌ Error: Calling a composite action at the job level.
+# ✔ Fix: Composite actions belong inside steps: of a job. Only reusable workflows are called directly under jobs.<job_id>.uses.
+
+# 8. Step-by-Step UI Verification & Testing Guide
+# Inspect Workspace Status:
+# bash
+# git status
+# Commit and Push:
+# bash
+# git add .github/actions/greeting-action/action.yml .github/workflows/composite-action.yml
+# git commit -m "ci: add custom composite action and caller workflow demonstration"
+# git push origin main
+# Trigger Workflow via GitHub Actions UI:
+# Go to your repository on GitHub.
+# Click the Actions tab.
+# In the left sidebar, click Composite Action Example.
+# Click Run workflow 
+# →
+# → enter a custom username (or leave the default "GitHub Actions") 
+# →
+# → click the green Run workflow button.
+# Inspect Execution Logs:
+# Click into the newly triggered run.
+# Expand the job Run Composite Action Job.
+# Expand step Execute Greeting Composite Action: observe all three internal composite steps executing in sequence.
+# Expand Workflow Post-Execution Summary to see the caller workflow finish.
