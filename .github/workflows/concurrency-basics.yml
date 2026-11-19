@@ -1,0 +1,334 @@
+# ==============================================================================
+# GitHub Actions Workflow: Concurrency Basics Demonstration
+# File Location: .github/workflows/concurrency-basics.yml
+# ==============================================================================
+
+# 'name': Title of the workflow displayed in the GitHub Actions tab
+name: Concurrency Basics
+
+# 'on': Triggers that execute this workflow
+on:
+  # Trigger 1: Allows manual workflow execution directly from GitHub Actions web UI
+  workflow_dispatch:
+
+  # Trigger 2: Automatic execution on push to the 'development' branch
+  push:
+    branches:
+      - development
+
+# ==============================================================================
+# 1. WORKFLOW-LEVEL CONCURRENCY
+# Controls concurrent executions of this entire workflow for the same branch.
+# 'group': A dynamic group string constructed from workflow name and git ref.
+# 'cancel-in-progress: true': Cancels any currently running workflow in this
+# group when a newer commit or run is triggered on the same branch.
+# ==============================================================================
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# 'jobs': Groups all demonstration jobs
+jobs:
+
+  # ============================================================================
+  # JOB 1: BUILD AND TEST STAGE
+  # Inherits workflow-level concurrency (${{ github.workflow }}-${{ github.ref }}).
+  # If a developer pushes a new commit while this job is running, this job is
+  # automatically cancelled immediately, saving GitHub runner minutes.
+  # ============================================================================
+  build:
+    name: Build & Test Stage
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Log Start of Build Stage
+        run: |
+          echo "=========================================="
+          echo "Build & Test started for branch: ${{ github.ref_name }}"
+          echo "Workflow Run ID: ${{ github.run_id }}"
+          echo "=========================================="
+
+      # Simulate a long-running build or test suite (15 seconds)
+      - name: Simulate Build & Test Execution
+        run: |
+          echo "Compiling application source code..."
+          sleep 5
+          echo "Executing automated test suite..."
+          sleep 10
+          echo "=========================================="
+          echo "Build and tests completed successfully!"
+          echo "=========================================="
+
+  # ============================================================================
+  # JOB 2: DEPLOYMENT STAGE (JOB-LEVEL CONCURRENCY)
+  # Uses dedicated job-level concurrency to safeguard the deployment target.
+  # 'cancel-in-progress: false': NEVER cancels an in-progress deployment!
+  # If another deployment triggers for the same group, it waits safely until this
+  # active deployment completes, avoiding race conditions or corrupted releases.
+  # ============================================================================
+  deploy:
+    name: Simulated Deployment Stage
+    runs-on: ubuntu-latest
+
+    # Enforces sequential dependency: deployment runs only after build succeeds
+    needs: build
+
+    # --------------------------------------------------------------------------
+    # Job-Level Concurrency Definition
+    # Overrides workflow-level concurrency specifically for this deployment job.
+    # --------------------------------------------------------------------------
+    concurrency:
+      # Dedicated lock group for deployments to this specific branch/environment
+      group: deployment-${{ github.ref }}
+
+      # Set to 'false' so active deployments are NEVER terminated midway through
+      cancel-in-progress: false
+
+    steps:
+      - name: Log Start of Deployment Stage
+        run: |
+          echo "=========================================="
+          echo "Deployment started."
+          echo "Target Ref: ${{ github.ref }}"
+          echo "Active Concurrency Group: deployment-${{ github.ref }}"
+          echo "=========================================="
+
+      # Step-by-step simulated deployment with duration
+      - name: Execute Deployment
+        run: |
+          echo "Preparing deployment..."
+          sleep 5
+          echo "Deployment in progress..."
+          sleep 10
+          echo "Verifying service health checks..."
+          sleep 5
+          echo "=========================================="
+          echo "Deployment completed successfully."
+          echo "=========================================="
+
+
+# 1. What is Concurrency in GitHub Actions?
+
+# When developers push several commits in quick succession, open multiple pull requests, or trigger workflows repeatedly, GitHub Actions runs those workflows simultaneously by default.
+
+# Running simultaneous workflows causes two major problems:
+
+# Wasted Compute Minutes: Running tests on an older commit when a newer commit has already been pushed wastes runner minutes.
+# Deployment Race Conditions: Two jobs deploying to the same server or environment at the same time can overwrite files, run conflicting database migrations, or leave the server in a corrupted state.
+
+# The concurrency keyword ensures that only one run or job within a designated concurrency group executes at any given time.
+
+# 2. Complete Workflow YAML Configuration
+# yaml
+# # ==============================================================================
+# # GitHub Actions Workflow: Concurrency Basics Demonstration
+# # File Location: .github/workflows/concurrency-basics.yml
+# # ==============================================================================
+# # 'name': Title of the workflow displayed in the GitHub Actions tab
+# name: Concurrency Basics
+# # 'on': Triggers that execute this workflow
+# on:
+#   # Trigger 1: Allows manual workflow execution directly from GitHub Actions web UI
+#   workflow_dispatch:
+#   # Trigger 2: Automatic execution on push to the 'development' branch
+#   push:
+#     branches:
+#       - development
+# # ==============================================================================
+# # 1. WORKFLOW-LEVEL CONCURRENCY
+# # Controls concurrent executions of this entire workflow for the same branch.
+# # 'group': A dynamic group string constructed from workflow name and git ref.
+# # 'cancel-in-progress: true': Cancels any currently running workflow in this
+# # group when a newer commit or run is triggered on the same branch.
+# # ==============================================================================
+# concurrency:
+#   group: ${{ github.workflow }}-${{ github.ref }}
+#   cancel-in-progress: true
+# # 'jobs': Groups all demonstration jobs
+# jobs:
+#   # ============================================================================
+#   # JOB 1: BUILD AND TEST STAGE
+#   # Inherits workflow-level concurrency (${{ github.workflow }}-${{ github.ref }}).
+#   # If a developer pushes a new commit while this job is running, this job is
+#   # automatically cancelled immediately, saving GitHub runner minutes.
+#   # ============================================================================
+#   build:
+#     name: Build & Test Stage
+#     runs-on: ubuntu-latest
+#     steps:
+#       - name: Log Start of Build Stage
+#         run: |
+#           echo "=========================================="
+#           echo "Build & Test started for branch: ${{ github.ref_name }}"
+#           echo "Workflow Run ID: ${{ github.run_id }}"
+#           echo "=========================================="
+#       # Simulate a long-running build or test suite (15 seconds)
+#       - name: Simulate Build & Test Execution
+#         run: |
+#           echo "Compiling application source code..."
+#           sleep 5
+#           echo "Executing automated test suite..."
+#           sleep 10
+#           echo "=========================================="
+#           echo "Build and tests completed successfully!"
+#           echo "=========================================="
+#   # ============================================================================
+#   # JOB 2: DEPLOYMENT STAGE (JOB-LEVEL CONCURRENCY)
+#   # Uses dedicated job-level concurrency to safeguard the deployment target.
+#   # 'cancel-in-progress: false': NEVER cancels an in-progress deployment!
+#   # If another deployment triggers for the same group, it waits safely until this
+#   # active deployment completes, avoiding race conditions or corrupted releases.
+#   # ============================================================================
+#   deploy:
+#     name: Simulated Deployment Stage
+#     runs-on: ubuntu-latest
+#     # Enforces sequential dependency: deployment runs only after build succeeds
+#     needs: build
+#     # --------------------------------------------------------------------------
+#     # Job-Level Concurrency Definition
+#     # Overrides workflow-level concurrency specifically for this deployment job.
+#     # --------------------------------------------------------------------------
+#     concurrency:
+#       # Dedicated lock group for deployments to this specific branch/environment
+#       group: deployment-${{ github.ref }}
+#       # Set to 'false' so active deployments are NEVER terminated midway through
+#       cancel-in-progress: false
+#     steps:
+#       - name: Log Start of Deployment Stage
+#         run: |
+#           echo "=========================================="
+#           echo "Deployment started."
+#           echo "Target Ref: ${{ github.ref }}"
+#           echo "Active Concurrency Group: deployment-${{ github.ref }}"
+#           echo "=========================================="
+#       # Step-by-step simulated deployment with duration
+#       - name: Execute Deployment
+#         run: |
+#           echo "Preparing deployment..."
+#           sleep 5
+#           echo "Deployment in progress..."
+#           sleep 10
+#           echo "Verifying service health checks..."
+#           sleep 5
+#           echo "=========================================="
+#           echo "Deployment completed successfully."
+#           echo "=========================================="
+# 3. Core Concurrency Mechanics
+# A. Concurrency Group (group:)
+
+# A concurrency group is an arbitrary string that acts as an exclusive lock:
+
+# Dynamic Group: ${{ github.workflow }}-${{ github.ref }} evaluates to something like Concurrency Basics-refs/heads/development. This isolates concurrency per branch, meaning runs on development won't block or cancel runs on feature-branch.
+# Static Group: group: production-deploy locks across all branches and commits, ensuring only one job in the entire repository can deploy to production at any moment.
+# B. cancel-in-progress: true vs. cancel-in-progress: false
+# Setting	Behavior When Newer Run Arrives	Best Use Case
+# cancel-in-progress: true	Immediately terminates the currently running job/workflow and starts the new one.	CI Pipelines: Pull request testing, code linting, unit tests. (Saves runner minutes).
+# cancel-in-progress: false	Allows the active job to finish completely. The new job waits in a pending state.	CD Pipelines: Deployments, database migrations, publishing packages. (Prevents corruption).
+
+# WARNING
+
+# Never set cancel-in-progress: true on deployment jobs or database migration steps! Cancelling an active deployment midway through can leave your production infrastructure in an undefined, broken state.
+
+# 4. Workflow-Level vs. Job-Level Concurrency
+# Workflow-Level Concurrency
+
+# Placed at the root of the YAML file:
+
+# yaml
+# concurrency:
+#   group: ${{ github.workflow }}-${{ github.ref }}
+#   cancel-in-progress: true
+
+# Applies to the entire workflow run. If a newer commit arrives, all jobs in the older workflow run are cancelled immediately.
+
+# Job-Level Concurrency (Override)
+
+# Placed inside a specific job definition:
+
+# yaml
+# jobs:
+#   deploy:
+#     concurrency:
+#       group: deployment-${{ github.ref }}
+#       cancel-in-progress: false
+
+# Allows testing and preparation jobs to run freely and cancel early on new commits, while locking only the deployment job so deployments serialize safely without overlapping.
+
+# 5. GitHub Actions Concurrency Queueing Limits
+
+# A common misconception is that GitHub Actions maintains an infinite First-In, First-Out (FIFO) queue for concurrency groups.
+
+# GitHub's Queue Limit Rule: For any single concurrency group, GitHub Actions permits:
+
+# 1 Active (Running) Job
+# At most 1 Pending Job
+
+# If Run #1 is running and Run #2 is pending, and Run #3 is triggered:
+
+# Run #3 cancels and replaces Run #2 in the queue.
+# Run #1 finishes, and Run #3 executes next.
+# This prevents huge queues of outdated intermediate builds from building up.
+# 6. Pull Request Concurrency Pattern
+
+# For pull request workflows, use the PR number fallback pattern:
+
+# yaml
+# concurrency:
+#   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+#   cancel-in-progress: true
+# On a Pull Request: resolves to CI-142 (where 142 is the PR number). Whenever the author pushes a new commit to the PR, the previous run is cancelled immediately.
+# On a direct branch push: falls back to github.ref (e.g., CI-refs/heads/main).
+# 7. Execution Architecture & Diagram
+# 8. Expected Execution Logs
+# Build & Test Stage Log:
+# text
+# ==========================================
+# Build & Test started for branch: development
+# Workflow Run ID: 11924589211
+# ==========================================
+# Compiling application source code...
+# Executing automated test suite...
+# ==========================================
+# Build and tests completed successfully!
+# ==========================================
+# Deployment Stage Log:
+# text
+# ==========================================
+# Deployment started.
+# Target Ref: refs/heads/development
+# Active Concurrency Group: deployment-refs/heads/development
+# ==========================================
+# Preparing deployment...
+# Deployment in progress...
+# Verifying service health checks...
+# ==========================================
+# Deployment completed successfully.
+# ==========================================
+# 9. Step-by-Step UI Verification & Testing Guide
+
+# To see concurrency in action in the GitHub Actions UI:
+
+# Verify Files on Disk:
+
+# bash
+# git status
+
+# Commit and Push:
+
+# bash
+# git add .github/workflows/concurrency-basics.yml
+# git commit -m "ci: add concurrency groups and cancellation demonstration workflow"
+# git push origin main
+
+# Test cancel-in-progress: true in GitHub Actions:
+
+# Go to the Actions tab in your repository.
+# Select Concurrency Basics in the left sidebar.
+# Click Run workflow 
+# →
+# → click Run workflow (Run #1 starts).
+# Immediately (within 5 seconds), click Run workflow again (Run #2 starts).
+# In the workflow runs list, observe:
+# Run #1 changes status to grey with an icon indicating: "Cancelled".
+# Run #2 executes to completion.
+# You have just witnessed cancel-in-progress: true conserving compute resources!
