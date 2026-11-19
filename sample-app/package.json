@@ -2,9 +2,10 @@
   "name": "github-actions-node-ci",
   "version": "1.0.0",
   "description": "Simple Node.js project demonstrating GitHub Actions CI",
-  "main": "sample/math.js",
+  "main": "math.js",
   "scripts": {
-    "test": "node --test sample/*.test.js"
+    "lint": "node --check math.js && node --check math.test.js && echo \"Lint OK: no syntax errors\"",
+    "test": "node --test"
   }
 }
 
