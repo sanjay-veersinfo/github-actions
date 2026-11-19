@@ -1,0 +1,421 @@
+# ==============================================================================
+# GitHub Actions Workflow: GITHUB_TOKEN Permissions Demonstration
+# File Location: .github/workflows/token-permissions.yml
+# ==============================================================================
+
+# 'name': Title of the workflow displayed in the GitHub Actions tab
+name: Token Permissions Basics
+
+# 'on': Triggers that execute this workflow
+on:
+  # Trigger 1: Allows manual workflow execution directly from GitHub Actions web UI
+  workflow_dispatch:
+
+  # Trigger 2: Automatic execution on push to 'main' or 'development' branch
+  push:
+    branches:
+      - main
+      - development
+
+# 'jobs': Groups the three demonstration jobs
+# NOTE: The three jobs run independently and in parallel by default.
+jobs:
+
+  # ============================================================================
+  # JOB 1: READ PERMISSIONS (contents: read, issues: read)
+  # Demonstrates read-only access to repository contents and issues.
+  # ============================================================================
+  read-permissions:
+    name: Read Permissions Demonstration
+    runs-on: ubuntu-latest
+
+    # Job-level permissions: explicitly grant only read access to contents and issues
+    # All unspecified permission scopes (write, pull-requests, etc.) are set to 'none'.
+    permissions:
+      contents: read
+      issues: read
+
+    steps:
+      # Step 1: Log job start banner
+      - name: Log Start Message
+        run: |
+          echo "=========================================="
+          echo "Read permission demonstration started."
+          echo "Repository contents read permission granted."
+          echo "Issues read permission granted."
+          echo "=========================================="
+
+      # Step 2: Clone repository contents
+      # 'actions/checkout@v4' requires 'contents: read' permission to fetch files.
+      - name: Checkout Repository Contents
+        uses: actions/checkout@v4
+
+      # Step 3: Retrieve recent repository issues using GitHub API
+      # 'actions/github-script@v7' uses the automatically provided GITHUB_TOKEN.
+      # Security Best Practice: Never print or log the raw token value!
+      - name: List Recent Repository Issues
+        uses: actions/github-script@v7
+        with:
+          script: |
+            try {
+              const response = await github.rest.issues.listForRepo({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                per_page: 5,
+                state: 'all'
+              });
+
+              console.log('Recent issues retrieved successfully.');
+              console.log(`Total retrieved issues: ${response.data.length}`);
+
+              if (response.data.length === 0) {
+                console.log('No issues found in this repository.');
+              } else {
+                response.data.forEach(issue => {
+                  console.log(`- Issue #${issue.number}: ${issue.title} (State: ${issue.state})`);
+                });
+              }
+            } catch (error) {
+              console.error('Failed to retrieve issues:', error.message);
+              throw error;
+            }
+
+  # ============================================================================
+  # JOB 2: WRITE PERMISSIONS (contents: write, issues: write)
+  # Demonstrates write access by creating a demonstration issue in the repository.
+  # SAFETY NOTE: Executing this job will create an actual GitHub issue!
+  # ============================================================================
+  write-permissions:
+    name: Write Permissions Demonstration
+    runs-on: ubuntu-latest
+
+    # Job-level permissions: grant write access to contents and issues
+    permissions:
+      contents: write
+      issues: write
+
+    steps:
+      # Step 1: Log job start banner
+      - name: Log Start Message
+        run: |
+          echo "=========================================="
+          echo "Write permission demonstration started."
+          echo "Issues write permission granted."
+          echo "=========================================="
+
+      # Step 2: Create a demonstration issue using GitHub API
+      # Requires 'issues: write' permission to create or modify issues.
+      - name: Create Demo Issue via GitHub API
+        uses: actions/github-script@v7
+        with:
+          script: |
+            try {
+              const issueTitle = "GitHub Actions Token Permission Demo";
+              const issueBody = "This issue was created by a GitHub Actions workflow to demonstrate issues: write permission.";
+
+              console.log(`Creating issue titled: "${issueTitle}"...`);
+
+              const newIssue = await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: issueTitle,
+                body: issueBody
+              });
+
+              console.log('Demo issue created successfully.');
+              console.log(`Created Issue Number: #${newIssue.data.number}`);
+              console.log(`Created Issue URL: ${newIssue.data.html_url}`);
+            } catch (error) {
+              console.error('Failed to create issue:', error.message);
+              throw error;
+            }
+
+  # ============================================================================
+  # JOB 3: NO PERMISSIONS (permissions: {})
+  # Demonstrates that standard runner shell commands execute normally, even when
+  # GITHUB_TOKEN has all repository permissions explicitly revoked.
+  # ============================================================================
+  no-permissions:
+    name: No Permissions Demonstration
+    runs-on: ubuntu-latest
+
+    # Job-level permissions: explicitly empty object removes all GITHUB_TOKEN permissions
+    permissions: {}
+
+    steps:
+      # Step 1: Execute standard runner shell commands
+      # Proves that runner environment commands (compiling, echo, filesystem) work
+      # independently of GITHUB_TOKEN repository API permissions.
+      - name: Execute Shell Commands Without Token Permissions
+        run: |
+          echo "=========================================="
+          echo "No permissions demonstration started."
+          echo "Runner commands can execute without repository token permissions."
+          echo "GITHUB_TOKEN has no explicitly granted permissions for this job."
+          echo "=========================================="
+          echo "Operating System: $(uname -s -r)"
+          echo "Current Directory: $(pwd)"
+          echo "Computation check: 10 + 20 = $((10 + 20))"
+
+
+
+
+# What is GITHUB_TOKEN and Why Does It Exist?
+
+# At the start of every workflow run, GitHub automatically generates an ephemeral authentication token called GITHUB_TOKEN.
+
+# Automatic Lifecycle: The token is created when a workflow begins and is automatically destroyed when the run completes.
+# Access Contexts: Can be referenced in workflow YAML as ${{ github.token }} or ${{ secrets.GITHUB_TOKEN }}.
+# Built-in Authentication: Allows actions and scripts (such as actions/checkout or actions/github-script) to interact with the repository API without creating personal access tokens (PATs) or manual secrets.
+# The Principle of Least Privilege
+
+# By default, organizations or repositories can configure GITHUB_TOKEN permissions to be either permissive (read/write) or restricted (read-only).
+
+# The Principle of Least Privilege requires granting only the absolute minimum permissions necessary for a task to function. If a compromised third-party action or malicious pull request executes code, granular permissions prevent it from modifying repository code, publishing releases, or tampering with issues.
+
+# 2. Complete Workflow YAML Configuration
+# yaml
+# # ==============================================================================
+# # GitHub Actions Workflow: GITHUB_TOKEN Permissions Demonstration
+# # File Location: .github/workflows/token-permissions.yml
+# # ==============================================================================
+# # 'name': Title of the workflow displayed in the GitHub Actions tab
+# name: Token Permissions Basics
+# # 'on': Triggers that execute this workflow
+# on:
+#   # Trigger 1: Allows manual workflow execution directly from GitHub Actions web UI
+#   workflow_dispatch:
+#   # Trigger 2: Automatic execution on push to 'main' or 'development' branch
+#   push:
+#     branches:
+#       - main
+#       - development
+# # 'jobs': Groups the three demonstration jobs
+# # NOTE: The three jobs run independently and in parallel by default.
+# jobs:
+#   # ============================================================================
+#   # JOB 1: READ PERMISSIONS (contents: read, issues: read)
+#   # Demonstrates read-only access to repository contents and issues.
+#   # ============================================================================
+#   read-permissions:
+#     name: Read Permissions Demonstration
+#     runs-on: ubuntu-latest
+#     # Job-level permissions: explicitly grant only read access to contents and issues
+#     # All unspecified permission scopes (write, pull-requests, etc.) are set to 'none'.
+#     permissions:
+#       contents: read
+#       issues: read
+#     steps:
+#       # Step 1: Log job start banner
+#       - name: Log Start Message
+#         run: |
+#           echo "=========================================="
+#           echo "Read permission demonstration started."
+#           echo "Repository contents read permission granted."
+#           echo "Issues read permission granted."
+#           echo "=========================================="
+#       # Step 2: Clone repository contents
+#       # 'actions/checkout@v4' requires 'contents: read' permission to fetch files.
+#       - name: Checkout Repository Contents
+#         uses: actions/checkout@v4
+#       # Step 3: Retrieve recent repository issues using GitHub API
+#       # 'actions/github-script@v7' uses the automatically provided GITHUB_TOKEN.
+#       # Security Best Practice: Never print or log the raw token value!
+#       - name: List Recent Repository Issues
+#         uses: actions/github-script@v7
+#         with:
+#           script: |
+#             try {
+#               const response = await github.rest.issues.listForRepo({
+#                 owner: context.repo.owner,
+#                 repo: context.repo.repo,
+#                 per_page: 5,
+#                 state: 'all'
+#               });
+#               console.log('Recent issues retrieved successfully.');
+#               console.log(`Total retrieved issues: ${response.data.length}`);
+#               if (response.data.length === 0) {
+#                 console.log('No issues found in this repository.');
+#               } else {
+#                 response.data.forEach(issue => {
+#                   console.log(`- Issue #${issue.number}: ${issue.title} (State: ${issue.state})`);
+#                 });
+#               }
+#             } catch (error) {
+#               console.error('Failed to retrieve issues:', error.message);
+#               throw error;
+#             }
+#   # ============================================================================
+#   # JOB 2: WRITE PERMISSIONS (contents: write, issues: write)
+#   # Demonstrates write access by creating a demonstration issue in the repository.
+#   # SAFETY NOTE: Executing this job will create an actual GitHub issue!
+#   # ============================================================================
+#   write-permissions:
+#     name: Write Permissions Demonstration
+#     runs-on: ubuntu-latest
+#     # Job-level permissions: grant write access to contents and issues
+#     permissions:
+#       contents: write
+#       issues: write
+#     steps:
+#       # Step 1: Log job start banner
+#       - name: Log Start Message
+#         run: |
+#           echo "=========================================="
+#           echo "Write permission demonstration started."
+#           echo "Issues write permission granted."
+#           echo "=========================================="
+#       # Step 2: Create a demonstration issue using GitHub API
+#       # Requires 'issues: write' permission to create or modify issues.
+#       - name: Create Demo Issue via GitHub API
+#         uses: actions/github-script@v7
+#         with:
+#           script: |
+#             try {
+#               const issueTitle = "GitHub Actions Token Permission Demo";
+#               const issueBody = "This issue was created by a GitHub Actions workflow to demonstrate issues: write permission.";
+#               console.log(`Creating issue titled: "${issueTitle}"...`);
+#               const newIssue = await github.rest.issues.create({
+#                 owner: context.repo.owner,
+#                 repo: context.repo.repo,
+#                 title: issueTitle,
+#                 body: issueBody
+#               });
+#               console.log('Demo issue created successfully.');
+#               console.log(`Created Issue Number: #${newIssue.data.number}`);
+#               console.log(`Created Issue URL: ${newIssue.data.html_url}`);
+#             } catch (error) {
+#               console.error('Failed to create issue:', error.message);
+#               throw error;
+#             }
+#   # ============================================================================
+#   # JOB 3: NO PERMISSIONS (permissions: {})
+#   # Demonstrates that standard runner shell commands execute normally, even when
+#   # GITHUB_TOKEN has all repository permissions explicitly revoked.
+#   # ============================================================================
+#   no-permissions:
+#     name: No Permissions Demonstration
+#     runs-on: ubuntu-latest
+#     # Job-level permissions: explicitly empty object removes all GITHUB_TOKEN permissions
+#     permissions: {}
+#     steps:
+#       # Step 1: Execute standard runner shell commands
+#       # Proves that runner environment commands (compiling, echo, filesystem) work
+#       # independently of GITHUB_TOKEN repository API permissions.
+#       - name: Execute Shell Commands Without Token Permissions
+#         run: |
+#           echo "=========================================="
+#           echo "No permissions demonstration started."
+#           echo "Runner commands can execute without repository token permissions."
+#           echo "GITHUB_TOKEN has no explicitly granted permissions for this job."
+#           echo "=========================================="
+#           echo "Operating System: $(uname -s -r)"
+#           echo "Current Directory: $(pwd)"
+#           echo "Computation check: 10 + 20 = $((10 + 20))"
+# 3. Understanding the Permission Scopes
+# Scope	Value	What It Allows	What It Denies
+# contents	read	Git clone, checkout, reading commits, releases, and files.	Pushing commits, creating tags, deleting branches, creating releases.
+# contents	write	Pushing code, creating git tags, modifying releases.	Unrelated API actions like modifying issues or pull request reviews.
+# issues	read	Fetching issue lists, issue comments, labels, and metadata.	Creating new issues, editing issue titles/bodies, closing issues.
+# issues	write	Creating issues, adding comments, closing/reopening, applying labels.	Direct code pushes (unless contents: write is also granted).
+# {}	none	Complete revocation. Token has zero permissions on repository resources.	All GitHub API calls to the repository will return HTTP 403.
+
+# IMPORTANT
+
+# The Implicit Deny Rule:
+# Once you define the permissions: block with specific keys, any permission scope not explicitly listed is automatically set to none.
+# For example, if you declare permissions: { contents: read }, scopes such as issues, pull-requests, packages, and actions are automatically revoked.
+
+# 4. Workflow-Level vs. Job-Level Permissions
+# Workflow-Level Permissions
+
+# You can declare permissions: at the root of the workflow (outside jobs:). This sets the default permissions applied to all jobs in the workflow:
+
+# yaml
+# # Top of YAML file
+# permissions:
+#   contents: read
+#   issues: read
+# jobs:
+#   ...
+# Job-Level Permissions (Best Practice)
+
+# Defining permissions: inside individual jobs overrides workflow defaults and enforces precision:
+
+# The build/test job receives only contents: read.
+# The issue notifier job receives only issues: write.
+# The compilation job receives permissions: {}.
+# 5. Execution Architecture & Expected Logs
+# Expected Log: read-permissions
+# text
+# ==========================================
+# Read permission demonstration started.
+# Repository contents read permission granted.
+# Issues read permission granted.
+# ==========================================
+# Recent issues retrieved successfully.
+# Total retrieved issues: 1
+# - Issue #1: Welcome to the repository (State: open)
+# Expected Log: write-permissions
+# text
+# ==========================================
+# Write permission demonstration started.
+# Issues write permission granted.
+# ==========================================
+# Creating issue titled: "GitHub Actions Token Permission Demo"...
+# Demo issue created successfully.
+# Created Issue Number: #2
+# Created Issue URL: https://github.com/owner/repo/issues/2
+
+# WARNING
+
+# Safety Notice: Executing the write-permissions job will create a real, live issue in your GitHub repository every time it runs.
+
+# Expected Log: no-permissions
+# text
+# ==========================================
+# No permissions demonstration started.
+# Runner commands can execute without repository token permissions.
+# GITHUB_TOKEN has no explicitly granted permissions for this job.
+# ==========================================
+# Operating System: Linux 6.5.0-1025-azure
+# Current Directory: /home/runner/work/github-actions/github-actions
+# Computation check: 10 + 20 = 30
+# 6. Common Permission Errors & Troubleshooting
+
+# CAUTION
+
+# Error: HTTP 403 Resource not accessible by integration
+
+# Cause: A step in your job attempted a GitHub API call without the required permission scope on GITHUB_TOKEN (for example, attempting github.rest.issues.create while only issues: read or permissions: {} was configured).
+# Fix: Add the necessary scope to the job's permissions: block:
+# yaml
+# permissions:
+#   issues: write
+
+# IMPORTANT
+
+# Security Rule: Never Print GITHUB_TOKEN
+# GitHub Actions automatically attempts to mask secrets, but printing raw token variables to stdout or log files creates unnecessary exposure. Always pass the token directly to trusted actions via with: github-token: or reference it in github-script via github.token.
+
+# 7. Step-by-Step UI Verification & Testing Guide
+# Check Local Status:
+# bash
+# git status
+# Commit and Push:
+# bash
+# git add .github/workflows/token-permissions.yml
+# git commit -m "ci: add GITHUB_TOKEN permissions demonstration workflow"
+# git push origin main
+# Trigger Workflow Manually:
+# Navigate to the Actions tab in your GitHub repository.
+# Click Token Permissions Basics in the left sidebar.
+# Click Run workflow 
+# →
+# → select branch main 
+# →
+# → click the green Run workflow button.
+# Inspect Execution:
+# Observe all 3 jobs (read-permissions, write-permissions, no-permissions) running concurrently.
+# Click write-permissions to view the output containing the link to the newly created demo issue.
+# Click into the Issues tab of your repository to verify the created issue.
