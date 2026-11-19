@@ -1,0 +1,458 @@
+# ==============================================================================
+# GitHub Actions Workflow: Timeout and Continue-on-Error Basics Demonstration
+# File Location: .github/workflows/timeout-continue-on-error.yml
+# ==============================================================================
+
+# 'name': Title of the workflow displayed in the GitHub Actions tab
+name: Timeout and Continue-on-Error Basics
+
+# 'on': Triggers that execute this workflow
+on:
+  # Trigger 1: Allows manual workflow execution directly from GitHub Actions web UI
+  workflow_dispatch:
+
+  # Trigger 2: Automatic execution on push to 'main' or 'development' branch
+  push:
+    branches:
+      - main
+      - development
+
+# 'jobs': Groups all demonstration jobs
+# NOTE: Jobs execute independently and in parallel by default unless 'needs' is specified.
+jobs:
+
+  # ============================================================================
+  # 1. EXAMPLE 1: STEP-LEVEL TIMEOUT
+  # Demonstrates 'timeout-minutes: 1' applied directly to an individual step.
+  # When the step exceeds 1 minute, GitHub terminates it with an error.
+  # By default, subsequent steps are SKIPPED because the job has failed.
+  # ============================================================================
+  step-timeout-demo:
+    name: Step-Level Timeout Demo
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Initial banner
+      - name: Log Start of Step Timeout Demo
+        run: |
+          echo "=========================================="
+          echo "Step-Level Timeout Demonstration Started"
+          echo "Configured Timeout: 1 minute (60 seconds)"
+          echo "=========================================="
+
+      # Step 2: Simulate a long-running task that exceeds the configured timeout
+      # 'timeout-minutes: 1': Caps execution time of this specific step.
+      # 'sleep 120': Simulates a 2-minute task. It will be killed at 1 minute!
+      - name: Simulate Long Running Task (Times Out)
+        timeout-minutes: 1
+        run: |
+          echo "Task started at $(date -u)..."
+          echo "Simulating long process with 'sleep 120'..."
+          sleep 120
+          echo "Task completed (this line will never be reached)."
+
+      # Step 3: Default behavior verification
+      # Because the previous step timed out, this step is automatically SKIPPED.
+      - name: Subsequent Step (Skipped on Failure)
+        run: |
+          echo "This step was skipped because the previous step timed out."
+
+      # Step 4: Optional cleanup step using 'if: always()'
+      # Proves that status-check functions like always() can still run after a timeout.
+      - name: Post-Timeout Cleanup
+        if: always()
+        run: |
+          echo "Cleanup step executed via 'if: always()' despite step timeout."
+
+  # ============================================================================
+  # 2. EXAMPLE 2: JOB-LEVEL TIMEOUT
+  # Demonstrates 'timeout-minutes: 2' applied at the JOB level.
+  # Limits the cumulative execution time of the entire job across all its steps.
+  # Default GitHub Actions job timeout is 360 minutes (6 hours).
+  # ============================================================================
+  job-timeout-demo:
+    name: Job-Level Timeout Demo
+    runs-on: ubuntu-latest
+
+    # Job-level timeout: entire job is killed if total time exceeds 2 minutes
+    timeout-minutes: 2
+
+    steps:
+      - name: Log Start of Job Timeout Demo
+        run: |
+          echo "=========================================="
+          echo "Job-Level Timeout Demonstration Started"
+          echo "Overall Job Timeout: 2 minutes (120 seconds)"
+          echo "=========================================="
+
+      # Step that exceeds the 2-minute job limit
+      - name: Simulate Long Running Job (Times Out)
+        run: |
+          echo "Job started at $(date -u)..."
+          echo "Simulating operation with 'sleep 180' (3 minutes)..."
+          sleep 180
+          echo "Job finished (this line will never be reached)."
+
+  # ============================================================================
+  # 3. EXAMPLE 3: STEP-LEVEL CONTINUE-ON-ERROR
+  # Demonstrates 'continue-on-error: true' on an individual step.
+  # When a step fails (e.g., 'exit 1'), GitHub marks the step as failed (orange icon),
+  # but allows the remaining steps to execute and the job to complete successfully.
+  # ============================================================================
+  continue-on-error-demo:
+    name: Step-Level Continue-on-Error Demo
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Log Start of Continue-on-Error Demo
+        run: |
+          echo "=========================================="
+          echo "Step-Level Continue-on-Error Demonstration"
+          echo "=========================================="
+
+      # Step that fails intentionally using 'exit 1'
+      # 'continue-on-error: true': Prevents this failure from halting the job.
+      - name: Simulate Failure with Continue-on-Error
+        continue-on-error: true
+        run: |
+          echo "Simulating a non-critical step failure (e.g., linter warning or flaky test)..."
+          echo "Exiting with code 1..."
+          exit 1
+
+      # This step executes normally because the previous failure was tolerated!
+      - name: Continue After Failure
+        run: |
+          echo "=========================================="
+          echo "SUCCESS: The workflow continued after the failed step!"
+          echo "The previous step failed, but 'continue-on-error: true' kept the job alive."
+          echo "=========================================="
+
+  # ============================================================================
+  # 4. EXAMPLE 4: JOB-LEVEL CONTINUE-ON-ERROR
+  # Demonstrates 'continue-on-error: true' configured at the JOB level.
+  # If the job fails, GitHub records the failure but treats the job outcome as
+  # successful from the perspective of dependent jobs in the workflow.
+  # ============================================================================
+  job-continue-on-error-demo:
+    name: Job-Level Continue-on-Error Demo
+    runs-on: ubuntu-latest
+
+    # Job-level continue-on-error: workflow tolerates failure of this entire job
+    continue-on-error: true
+
+    steps:
+      - name: Simulate Job-Level Failure
+        run: |
+          echo "Simulating failure across the entire job..."
+          exit 1
+
+  # Stage that depends on the failed job above
+  downstream-job:
+    name: Downstream Job (Tolerated Dependency)
+    runs-on: ubuntu-latest
+
+    # Waits for 'job-continue-on-error-demo'
+    needs: job-continue-on-error-demo
+
+    steps:
+      - name: Verify Downstream Execution
+        run: |
+          echo "=========================================="
+          echo "Downstream job executed successfully!"
+          echo "Upstream 'job-continue-on-error-demo' failed, but its failure was tolerated."
+          echo "=========================================="
+
+  # ============================================================================
+  # 5. EXAMPLE 5: COMBINING TIMEOUT WITH CONTINUE-ON-ERROR
+  # Demonstrates a step with BOTH 'timeout-minutes: 1' and 'continue-on-error: true'.
+  # When the timeout terminates the step, continue-on-error catches the failure,
+  # allowing subsequent steps in the job to proceed.
+  # ============================================================================
+  timeout-with-continue-on-error:
+    name: Timeout Combined with Continue-on-Error
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step with both timeout and failure tolerance
+      - name: Timed-Out Step with Continue-on-Error
+        timeout-minutes: 1
+        continue-on-error: true
+        run: |
+          echo "Task started with 1-minute timeout AND continue-on-error: true..."
+          sleep 120
+          echo "Task finished (not reached)."
+
+      # Executes successfully even after the previous step timed out!
+      - name: Step After Timed-Out Step
+        run: |
+          echo "=========================================="
+          echo "Execution continued after timeout!"
+          echo "The timeout terminated Step 1, but continue-on-error allowed Step 2 to run."
+          echo "=========================================="
+
+
+
+# What are timeout-minutes and continue-on-error?
+
+# In CI/CD automation, workflows frequently execute commands that can hang indefinitely (such as network timeouts, deadlocked integration tests, or frozen build scripts) or fail on non-critical tasks (such as code linter warnings, experimental unit tests, or optional notification webhooks).
+
+# timeout-minutes (Resource Protection):
+# Sets a maximum execution duration in whole minutes. If a step or job exceeds this limit, GitHub Actions forcibly aborts it.
+# Default: If omitted, GitHub Actions allows jobs to run for up to 360 minutes (6 hours), which can drain your monthly runner minutes quota if a process hangs!
+# continue-on-error (Failure Tolerance):
+# Instructs GitHub Actions to tolerate a non-zero exit code (exit 1). The step or job is marked as failed (indicated by an orange warning icon in the UI), but execution proceeds to subsequent steps and dependent jobs.
+# 2. Complete Workflow YAML Configuration
+# yaml
+# # ==============================================================================
+# # GitHub Actions Workflow: Timeout and Continue-on-Error Basics Demonstration
+# # File Location: .github/workflows/timeout-continue-on-error.yml
+# # ==============================================================================
+# # 'name': Title of the workflow displayed in the GitHub Actions tab
+# name: Timeout and Continue-on-Error Basics
+# # 'on': Triggers that execute this workflow
+# on:
+#   # Trigger 1: Allows manual workflow execution directly from GitHub Actions web UI
+#   workflow_dispatch:
+#   # Trigger 2: Automatic execution on push to 'main' or 'development' branch
+#   push:
+#     branches:
+#       - main
+#       - development
+# # 'jobs': Groups all demonstration jobs
+# # NOTE: Jobs execute independently and in parallel by default unless 'needs' is specified.
+# jobs:
+#   # ============================================================================
+#   # 1. EXAMPLE 1: STEP-LEVEL TIMEOUT
+#   # Demonstrates 'timeout-minutes: 1' applied directly to an individual step.
+#   # When the step exceeds 1 minute, GitHub terminates it with an error.
+#   # By default, subsequent steps are SKIPPED because the job has failed.
+#   # ============================================================================
+#   step-timeout-demo:
+#     name: Step-Level Timeout Demo
+#     runs-on: ubuntu-latest
+#     steps:
+#       # Step 1: Initial banner
+#       - name: Log Start of Step Timeout Demo
+#         run: |
+#           echo "=========================================="
+#           echo "Step-Level Timeout Demonstration Started"
+#           echo "Configured Timeout: 1 minute (60 seconds)"
+#           echo "=========================================="
+#       # Step 2: Simulate a long-running task that exceeds the configured timeout
+#       # 'timeout-minutes: 1': Caps execution time of this specific step.
+#       # 'sleep 120': Simulates a 2-minute task. It will be killed at 1 minute!
+#       - name: Simulate Long Running Task (Times Out)
+#         timeout-minutes: 1
+#         run: |
+#           echo "Task started at $(date -u)..."
+#           echo "Simulating long process with 'sleep 120'..."
+#           sleep 120
+#           echo "Task completed (this line will never be reached)."
+#       # Step 3: Default behavior verification
+#       # Because the previous step timed out, this step is automatically SKIPPED.
+#       - name: Subsequent Step (Skipped on Failure)
+#         run: |
+#           echo "This step was skipped because the previous step timed out."
+#       # Step 4: Optional cleanup step using 'if: always()'
+#       # Proves that status-check functions like always() can still run after a timeout.
+#       - name: Post-Timeout Cleanup
+#         if: always()
+#         run: |
+#           echo "Cleanup step executed via 'if: always()' despite step timeout."
+#   # ============================================================================
+#   # 2. EXAMPLE 2: JOB-LEVEL TIMEOUT
+#   # Demonstrates 'timeout-minutes: 2' applied at the JOB level.
+#   # Limits the cumulative execution time of the entire job across all its steps.
+#   # Default GitHub Actions job timeout is 360 minutes (6 hours).
+#   # ============================================================================
+#   job-timeout-demo:
+#     name: Job-Level Timeout Demo
+#     runs-on: ubuntu-latest
+#     # Job-level timeout: entire job is killed if total time exceeds 2 minutes
+#     timeout-minutes: 2
+#     steps:
+#       - name: Log Start of Job Timeout Demo
+#         run: |
+#           echo "=========================================="
+#           echo "Job-Level Timeout Demonstration Started"
+#           echo "Overall Job Timeout: 2 minutes (120 seconds)"
+#           echo "=========================================="
+#       # Step that exceeds the 2-minute job limit
+#       - name: Simulate Long Running Job (Times Out)
+#         run: |
+#           echo "Job started at $(date -u)..."
+#           echo "Simulating operation with 'sleep 180' (3 minutes)..."
+#           sleep 180
+#           echo "Job finished (this line will never be reached)."
+#   # ============================================================================
+#   # 3. EXAMPLE 3: STEP-LEVEL CONTINUE-ON-ERROR
+#   # Demonstrates 'continue-on-error: true' on an individual step.
+#   # When a step fails (e.g., 'exit 1'), GitHub marks the step as failed (orange icon),
+#   # but allows the remaining steps to execute and the job to complete successfully.
+#   # ============================================================================
+#   continue-on-error-demo:
+#     name: Step-Level Continue-on-Error Demo
+#     runs-on: ubuntu-latest
+#     steps:
+#       - name: Log Start of Continue-on-Error Demo
+#         run: |
+#           echo "=========================================="
+#           echo "Step-Level Continue-on-Error Demonstration"
+#           echo "=========================================="
+#       # Step that fails intentionally using 'exit 1'
+#       # 'continue-on-error: true': Prevents this failure from halting the job.
+#       - name: Simulate Failure with Continue-on-Error
+#         continue-on-error: true
+#         run: |
+#           echo "Simulating a non-critical step failure (e.g., linter warning or flaky test)..."
+#           echo "Exiting with code 1..."
+#           exit 1
+#       # This step executes normally because the previous failure was tolerated!
+#       - name: Continue After Failure
+#         run: |
+#           echo "=========================================="
+#           echo "SUCCESS: The workflow continued after the failed step!"
+#           echo "The previous step failed, but 'continue-on-error: true' kept the job alive."
+#           echo "=========================================="
+#   # ============================================================================
+#   # 4. EXAMPLE 4: JOB-LEVEL CONTINUE-ON-ERROR
+#   # Demonstrates 'continue-on-error: true' configured at the JOB level.
+#   # If the job fails, GitHub records the failure but treats the job outcome as
+#   # successful from the perspective of dependent jobs in the workflow.
+#   # ============================================================================
+#   job-continue-on-error-demo:
+#     name: Job-Level Continue-on-Error Demo
+#     runs-on: ubuntu-latest
+#     # Job-level continue-on-error: workflow tolerates failure of this entire job
+#     continue-on-error: true
+#     steps:
+#       - name: Simulate Job-Level Failure
+#         run: |
+#           echo "Simulating failure across the entire job..."
+#           exit 1
+#   # Stage that depends on the failed job above
+#   downstream-job:
+#     name: Downstream Job (Tolerated Dependency)
+#     runs-on: ubuntu-latest
+#     # Waits for 'job-continue-on-error-demo'
+#     needs: job-continue-on-error-demo
+#     steps:
+#       - name: Verify Downstream Execution
+#         run: |
+#           echo "=========================================="
+#           echo "Downstream job executed successfully!"
+#           echo "Upstream 'job-continue-on-error-demo' failed, but its failure was tolerated."
+#           echo "=========================================="
+#   # ============================================================================
+#   # 5. EXAMPLE 5: COMBINING TIMEOUT WITH CONTINUE-ON-ERROR
+#   # Demonstrates a step with BOTH 'timeout-minutes: 1' and 'continue-on-error: true'.
+#   # When the timeout terminates the step, continue-on-error catches the failure,
+#   # allowing subsequent steps in the job to proceed.
+#   # ============================================================================
+#   timeout-with-continue-on-error:
+#     name: Timeout Combined with Continue-on-Error
+#     runs-on: ubuntu-latest
+#     steps:
+#       # Step with both timeout and failure tolerance
+#       - name: Timed-Out Step with Continue-on-Error
+#         timeout-minutes: 1
+#         continue-on-error: true
+#         run: |
+#           echo "Task started with 1-minute timeout AND continue-on-error: true..."
+#           sleep 120
+#           echo "Task finished (not reached)."
+#       # Executes successfully even after the previous step timed out!
+#       - name: Step After Timed-Out Step
+#         run: |
+#           echo "=========================================="
+#           echo "Execution continued after timeout!"
+#           echo "The timeout terminated Step 1, but continue-on-error allowed Step 2 to run."
+#           echo "=========================================="
+# 3. Detailed Concept Breakdown
+# A. Step-Level Timeout vs. Job-Level Timeout
+# Step-Level (step-timeout-demo): Applies only to a single operation (e.g., an external API call or test suite). If that step exceeds the duration, GitHub sends a termination signal (SIGTERM followed by SIGKILL), marks the step as failed, and skips all subsequent steps in that job by default.
+# Job-Level (job-timeout-demo): Sets an upper bound on the cumulative time taken by all steps in that job combined (checkout + setup + build + test). If the cumulative time hits the threshold, the entire runner job is killed immediately.
+
+# TIP
+
+# Always configure a reasonable job-level timeout-minutes (e.g., timeout-minutes: 10 or 15) on production pipelines. This prevents an unexpected infinite loop or frozen third-party install from burning through 360 minutes of runner allocation.
+
+# B. Step-Level vs. Job-Level continue-on-error
+# Step-Level (continue-on-error-demo):
+# Tolerates the failure of a specific step. Subsequent steps in the same job execute normally, and the overall job can finish with status success (green checkmark).
+# Job-Level (job-continue-on-error-demo):
+# Tolerates the failure of an entire job. Downstream jobs linked via needs: will still execute without requiring if: always(), because GitHub treats the failed job's workflow impact as non-fatal.
+# C. Combining timeout-minutes with continue-on-error
+
+# In Example 5:
+
+# yaml
+# - name: Timed-Out Step with Continue-on-Error
+#   timeout-minutes: 1
+#   continue-on-error: true
+#   run: sleep 120
+
+# When sleep 120 reaches the 1-minute timeout, GitHub terminates it. Because continue-on-error: true is present, GitHub catches the timeout error, marks the step with an orange warning, and allows the job to proceed to the next step.
+
+# 4. Comparison Table: timeout-minutes vs. continue-on-error
+# Feature	timeout-minutes	continue-on-error
+# Primary Goal	Prevent runaway jobs and conserve compute minutes.	Prevent non-critical failures from breaking the pipeline.
+# Trigger Condition	Elapsed wall-clock time exceeds limit.	Command exits with a non-zero status code (exit > 0).
+# Default Behavior Without It	Runs up to 360 minutes (6 hours).	Any failure (exit 1) immediately aborts the job.
+# Step UI Status	Red 'X' (Failed / Timed Out).	Orange Exclamation Circle (Failed, but tolerated).
+# Subsequent Steps	Skipped (unless guarded by if: always()).	Run normally as if the step succeeded.
+# Common Use Cases	Test suites, network downloads, deployment commands.	Code linters, coverage upload, experimental matrices, flaky tests.
+# 5. Execution Architecture & Lifecycle Diagram
+# 6. Expected Execution Logs
+# Step Timeout Log (step-timeout-demo):
+# text
+# Task started at 2026-11-19 13:20:00 UTC...
+# Simulating long process with 'sleep 120'...
+# ##[error]The action has timed out after 1 minutes.
+# Cleaning up orphan processes
+# ##[error]Process completed with exit code 143.
+# Step Continue-on-Error Log (continue-on-error-demo):
+# text
+# Simulating a non-critical step failure (e.g., linter warning or flaky test)...
+# Exiting with code 1...
+# ##[error]Process completed with exit code 1.
+# ==========================================
+# SUCCESS: The workflow continued after the failed step!
+# The previous step failed, but 'continue-on-error: true' kept the job alive.
+# ==========================================
+# Downstream Job Log (downstream-job):
+# text
+# ==========================================
+# Downstream job executed successfully!
+# Upstream 'job-continue-on-error-demo' failed, but its failure was tolerated.
+# ==========================================
+# 7. Step-by-Step UI Verification & Testing Guide
+
+# Verify Files on Disk:
+
+# bash
+# git status
+
+# Commit and Push:
+
+# bash
+# git add .github/workflows/timeout-continue-on-error.yml
+# git commit -m "ci: add timeout-minutes and continue-on-error demonstration workflow"
+# git push origin main
+
+# Trigger Workflow in GitHub UI:
+
+# In GitHub, navigate to the Actions tab.
+# Select Timeout and Continue-on-Error Basics in the left sidebar.
+# Click Run workflow 
+# →
+# → select branch main 
+# →
+# → click the green Run workflow button.
+
+# Inspect Results in the Run Graph:
+
+# continue-on-error-demo: Notice the job completes with a green checkmark, while the failed step shows an orange icon.
+# job-continue-on-error-demo: Notice the job has an orange status, but downstream-job completes with a green checkmark.
+# step-timeout-demo: Notice after 1 minute, the step turns red with The action has timed out, skipping normal steps and running only if: always().
+# timeout-with-continue-on-error: Notice the step times out after 1 minute, but the following step executes successfully due to continue-on-error: true.
