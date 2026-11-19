@@ -1,0 +1,118 @@
+# ==============================================================================
+# GitHub Actions Workflow: Environments and Approvals Demonstration
+# File Location: .github/workflows/environments-approvals.yml
+# ==============================================================================
+
+# 'name': Display title of the workflow shown in the GitHub Actions tab
+name: Environment Deployment and Approval Demo
+
+# 'on': Defines the trigger events for executing this workflow
+on:
+  # Trigger 1: Allows manual execution from the GitHub Actions web UI
+  workflow_dispatch:
+
+  # Trigger 2: Automatic execution on push to 'main' or 'development' branch
+  push:
+    branches:
+      - main
+      - development
+
+# 'jobs': Groups all deployment stages
+jobs:
+
+  # ============================================================================
+  # STAGE 1: DEVELOPMENT DEPLOYMENT
+  # Connected to the 'development' environment.
+  # Deploys automatically without requiring manual review approvals.
+  # ============================================================================
+  deploy-development:
+    name: Deploy to Development
+    runs-on: ubuntu-latest
+
+    # 'environment': Connects this job to the 'development' environment.
+    # Automatically loads environment-scoped variables and secrets configured in GitHub.
+    environment:
+      name: development
+      # 'url': Illustrative deployment URL displayed as a clickable link in GitHub UI
+      url: https://dev.example.com
+
+    steps:
+      # Step 1: Log deployment start banner
+      - name: Development Stage Banner
+        run: |
+          echo "=========================================="
+          echo "Starting Development Deployment Stage..."
+          echo "=========================================="
+
+      # Step 2: Access and display environment-scoped variables using the 'vars' context
+      # 'vars.APP_ENV' and 'vars.APP_VERSION' retrieve values specific to 'development'.
+      # Fallback defaults ('Development' / '1.0.0') ensure clean execution if not yet configured in UI.
+      - name: Display Environment Details
+        run: |
+          echo "Target Environment:     $APP_ENV"
+          echo "Application Version:    $APP_VERSION"
+          echo "GitHub Run ID:          ${{ github.run_id }}"
+        env:
+          APP_ENV: ${{ vars.APP_ENV || 'Development' }}
+          APP_VERSION: ${{ vars.APP_VERSION || '1.0.0' }}
+
+      # Step 3: Simulate application build and deployment to development server
+      - name: Simulate Development Deployment
+        run: |
+          echo "Deploying application artifacts to Development server..."
+          echo "Applying database migrations for dev..."
+          echo "Running health checks against https://dev.example.com..."
+          echo "=========================================="
+          echo "Development Deployment Completed Successfully!"
+          echo "=========================================="
+
+  # ============================================================================
+  # STAGE 2: PRODUCTION DEPLOYMENT (WITH APPROVAL GATE)
+  # Connected to the 'production' environment.
+  # 'needs: deploy-development' ensures production only starts after development succeeds.
+  # If 'Required Reviewers' are configured in GitHub Settings, this job will PAUSE
+  # and wait for an authorized reviewer to approve before proceeding.
+  # ============================================================================
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+
+    # 'needs': Enforces sequential dependency. Production waits for development!
+    needs: deploy-development
+
+    # 'environment': Connects this job to the 'production' environment.
+    # Evaluates Environment Protection Rules (e.g., Required Reviewers, Wait Timers).
+    environment:
+      name: production
+      # 'url': Production endpoint displayed in GitHub Actions UI deployment badge
+      url: https://example.com
+
+    steps:
+      # Step 1: Log production deployment start banner
+      - name: Production Stage Banner
+        run: |
+          echo "=========================================="
+          echo "Approval Granted! Starting Production Deployment..."
+          echo "=========================================="
+
+      # Step 2: Access and display production environment-scoped variables
+      # 'vars.APP_ENV' automatically resolves to 'Production' when bound to the production environment.
+      - name: Display Environment Details
+        run: |
+          echo "Target Environment:     $APP_ENV"
+          echo "Application Version:    $APP_VERSION"
+          echo "Deployed By:            ${{ github.actor }}"
+          echo "Commit SHA:             ${{ github.sha }}"
+        env:
+          APP_ENV: ${{ vars.APP_ENV || 'Production' }}
+          APP_VERSION: ${{ vars.APP_VERSION || '1.0.0' }}
+
+      # Step 3: Simulate high-availability production deployment
+      - name: Simulate Production Deployment
+        run: |
+          echo "Deploying verified artifacts to Production cluster..."
+          echo "Executing blue/green zero-downtime deployment..."
+          echo "Running production smoke tests against https://example.com..."
+          echo "=========================================="
+          echo "Production Deployment Completed Successfully!"
+          echo "=========================================="
